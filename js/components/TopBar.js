@@ -75,7 +75,6 @@
                 onClick=${e => e.stopPropagation()}
             >
                 
-                <!-- Left: Navigation & Menu -->
                 <div className="flex items-center gap-1">
                     <div className="flex items-center bg-black/5 dark:bg-white/5 rounded-md p-0.5 gap-0.5">
                         <${Btn} onClick=${back} disabled=${!canBack} icon=${Icons.ChevronLeft} title="Back (Alt+Left)" />
@@ -128,7 +127,6 @@
 
                 <${Sep} />
 
-                <!-- Center: Active Note Actions -->
                 <div className="flex items-center gap-1">
                     <${Btn} onClick=${handleFavToggle} icon=${Icons.Star} title="Toggle Favorite" active=${activeNote?.isFavorite} forceColor=${activeNote?.isFavorite} />
                     <${Btn} onClick=${()=>setEd(true)} icon=${Icons.Edit} title="Edit Content" active=${activeHasContent} forceColor=${activeHasContent} />
@@ -138,17 +136,14 @@
 
                 <${Sep} />
 
-                <!-- Right: Linking & Tools -->
                 <div className="flex items-center gap-1">
                     <${Btn} onClick=${()=>changeRelationship('unlink')} disabled=${!canUnlink} icon=${Icons.Unlink} title="Unlink (Backspace)" forceColor=${canUnlink} />
-                    <${Btn} onClick=${()=>handleLinkAction('left')} icon=${Icons.LinkLeft} title="Link Related (Ctrl+Left)" />
                     <${Btn} onClick=${()=>handleLinkAction('up')} icon=${Icons.LinkUp} title="Link Parent (Ctrl+Up)" />
                     <${Btn} onClick=${()=>handleLinkAction('down')} icon=${Icons.LinkDown} title="Link Child (Ctrl+Down)" />
                 </div>
 
                 <${Sep} />
 
-                <!-- Search -->
                 <div className="relative flex-1 min-w-[150px]">
                     <div className="absolute left-2 top-1/2 -translate-y-1/2 opacity-50 pointer-events-none" style=${{color:'var(--theme-accent)'}}>
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -186,7 +181,6 @@
 
                 <${Sep} />
 
-                <!-- Right: App Actions -->
                 <div className="flex items-center gap-1">
                     <div className="relative">
                         <${Btn} onClick=${()=>setThemeDrop(p=>!p)} icon=${dark?Icons.Sun:Icons.Moon} title="Select Theme" active=${themeDrop} />

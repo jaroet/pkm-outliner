@@ -26,7 +26,13 @@
         let da=await findNoteByTitle(i.full);if(!da){
             da=await createNote(i.full);const fm=await getNote(m.id);if(!fm.linksTo.includes(da.id))await updateNote(m.id,{linksTo:[...fm.linksTo,da.id]});
             const pd=new Date(d);pd.setDate(pd.getDate()-1);const pn=await findNoteByTitle(formatDateForJournal(pd).full);
-            if(pn){await updateNote(da.id,{relatedTo:[...da.relatedTo,pn.id]});await updateNote(pn.id,{relatedTo:[...pn.relatedTo,da.id]});}
+            if(pn){
+                // Link previous day to today and today to previous day via content
+                const daContent = (da.content || '') + `\n\n[[${pn.title}]]`;
+                const pnContent = (pn.content || '') + `\n\n[[${da.title}]]`;
+                await updateNote(da.id, { content: daContent });
+                await updateNote(pn.id, { content: pnContent });
+            }
         }return da.id;
     };
 

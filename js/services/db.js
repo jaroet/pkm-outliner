@@ -1,6 +1,6 @@
 
 (function(J) {
-    const VL='nexusnode_vaults',CV='nexusnode_current_vault',DV='JaRoet-PKM';
+    const VL='pkm_outliner_vaults',CV='pkm_outliner_current_vault',DV='PKM-Outliner';
     if(!localStorage.getItem(VL))localStorage.setItem(VL,JSON.stringify([DV]));
     if(!localStorage.getItem(CV))localStorage.setItem(CV,DV);
     
@@ -30,6 +30,30 @@
             }
             if (updates.length > 0) await tx.table('notes').bulkPut(updates);
         });
+        this.version(5).stores({notes:'id,title,*linksTo,*outgoingLinks,createdAt,modifiedAt', themes: 'id'}).upgrade(async tx => {
+            const notes = await tx.table('notes').toArray();
+            const idToTitle = new Map(notes.map(n => [n.id, n.title]));
+            const updates = [];
+            for (const note of notes) {
+                if (note.relatedTo && note.relatedTo.length > 0) {
+                    let links = [];
+                    for (const relId of note.relatedTo) {
+                        const t = idToTitle.get(relId);
+                        if (t) links.push(`[[${t}]]`);
+                    }
+                    if (links.length > 0) {
+                        const append = `\n\nRelated: ${links.join(', ')}`;
+                        note.content = (note.content || '') + append;
+                        const outgoing = new Set(note.outgoingLinks || []);
+                        note.relatedTo.forEach(id => outgoing.add(id));
+                        note.outgoingLinks = Array.from(outgoing);
+                    }
+                }
+                delete note.relatedTo;
+                updates.push(note);
+            }
+            if (updates.length > 0) await tx.table('notes').bulkPut(updates);
+        });
     }}
     const db=new DB(); 
 
@@ -52,7 +76,7 @@
     const seedDatabase=async()=>{
         if(await db.notes.count()===0){
             const id=crypto.randomUUID(),now=Date.now();
-            await db.notes.add({id,title:'Welcome',content:'# Welcome\n\nStart typing...',linksTo:[],relatedTo:[],isFavorite:false,createdAt:now,modifiedAt:now});
+            await db.notes.add({id,title:'Start',content:'# Start\n\n',linksTo:[],isFavorite:false,createdAt:now,modifiedAt:now});
             await db.meta.put({key:'currentCentralNoteId',value:id});await db.meta.put({key:'favoritesList',value:[]});await db.meta.put({key:'homeNoteId',value:id});
         }
         
@@ -152,17 +176,15 @@
     const getNote=(id)=>db.notes.get(id);
     const findNoteByTitle=(t)=>db.notes.where('title').equalsIgnoreCase(t).first();
     const getNoteTitlesByPrefix=async(p)=>(await db.notes.where('title').startsWith(p).toArray()).map(n=>n.title);
-    const createNote=async(t)=>{const n={id:crypto.randomUUID(),title:t,content:'',linksTo:[],relatedTo:[],outgoingLinks:[],isFavorite:false,createdAt:Date.now(),modifiedAt:Date.now()};await db.notes.add(n);return n;};
+    const createNote=async(t)=>{const n={id:crypto.randomUUID(),title:t,content:'',linksTo:[],outgoingLinks:[],isFavorite:false,createdAt:Date.now(),modifiedAt:Date.now()};await db.notes.add(n);return n;};
     const updateNote=(id,u)=>db.notes.update(id,{...u,modifiedAt:Date.now()});
-    const deleteNote=async(id)=>db.transaction('rw',db.notes,db.meta,async()=>{await db.notes.delete(id);await db.notes.where('linksTo').equals(id).modify(n=>{n.linksTo=n.linksTo.filter(x=>x!==id);n.modifiedAt=Date.now();});await db.notes.where('relatedTo').equals(id).modify(n=>{n.relatedTo=n.relatedTo.filter(x=>x!==id);n.modifiedAt=Date.now();});const f=await db.meta.get('favoritesList');if(f&&f.value.includes(id))await db.meta.put({key:'favoritesList',value:f.value.filter(x=>x!==id)});});
+    const deleteNote=async(id)=>db.transaction('rw',db.notes,db.meta,async()=>{await db.notes.delete(id);await db.notes.where('linksTo').equals(id).modify(n=>{n.linksTo=n.linksTo.filter(x=>x!==id);n.modifiedAt=Date.now();});const f=await db.meta.get('favoritesList');if(f&&f.value.includes(id))await db.meta.put({key:'favoritesList',value:f.value.filter(x=>x!==id)});});
     const getNoteCount=()=>db.notes.count();
     
     const getTopology=async(cid)=>{
-        const c=await db.notes.get(cid);if(!c)return{center:null,uppers:[],downers:[],lefters:[],righters:[]};
-        const u=await db.notes.where('linksTo').equals(cid).toArray(),d=await db.notes.bulkGet(c.linksTo),l=await db.notes.bulkGet(c.relatedTo),rm=new Map();
-        const siblingLists = await Promise.all(u.map(up => db.notes.bulkGet(up.linksTo)));
-        siblingLists.forEach(l => l.forEach(s => { if(s && s.id !== cid) rm.set(s.id, s); }));
-        return{center:c,uppers:u.filter(Boolean),downers:d.filter(Boolean),lefters:l.filter(Boolean),righters:Array.from(rm.values())};
+        const c=await db.notes.get(cid);if(!c)return{center:null,uppers:[],downers:[]};
+        const u=await db.notes.where('linksTo').equals(cid).toArray(),d=await db.notes.bulkGet(c.linksTo);
+        return{center:c,uppers:u.filter(Boolean),downers:d.filter(Boolean)};
     };
     
     const getFavorites=async()=>{const m=await db.meta.get('favoritesList');return(await db.notes.bulkGet(m?m.value:[])).filter(Boolean);};
@@ -267,9 +289,9 @@
             for(const n of notes){
                 let t=n.title,c=1,r=false;while(ex.has(t.toLowerCase())){t=`${n.title} (${c++})`;r=true;}ex.add(t.toLowerCase());
                 const nid=map.get(n.id);if(r)ren.push(nid);
-                add.push({...n,id:nid,title:t,linksTo:n.linksTo.map(x=>map.get(x)).filter(Boolean),relatedTo:n.relatedTo.map(x=>map.get(x)).filter(Boolean),outgoingLinks:(n.outgoingLinks||[]).map(x=>map.get(x)).filter(Boolean)});
+                add.push({...n,id:nid,title:t,linksTo:n.linksTo.map(x=>map.get(x)).filter(Boolean),outgoingLinks:(n.outgoingLinks||[]).map(x=>map.get(x)).filter(Boolean)});
             }
-            if(ren.length)add.push({id:crypto.randomUUID(),title:`import_${Date.now()}`,content:'Renamed items',linksTo:ren,relatedTo:[],isFavorite:false,createdAt:Date.now(),modifiedAt:Date.now()});
+            if(ren.length)add.push({id:crypto.randomUUID(),title:`import_${Date.now()}`,content:'Renamed items',linksTo:ren,isFavorite:false,createdAt:Date.now(),modifiedAt:Date.now()});
             for(let i=0;i<add.length;i+=50)await db.notes.bulkAdd(add.slice(i,i+50));
         }
     };

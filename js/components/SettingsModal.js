@@ -196,13 +196,11 @@
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                 <div className="w-full max-w-[90vw] h-[85vh] bg-card rounded-xl shadow-2xl border border-gray-200 dark:border-gray-800 flex flex-col text-foreground">
                     
-                    <!-- Header -->
                     <div className="flex justify-between items-center p-6 pb-2">
                         <h2 className="text-xl font-bold">Settings</h2>
                         <button onClick=${onClose} className="text-gray-500 hover:text-foreground">✕</button>
                     </div>
 
-                    <!-- Tabs -->
                     <div className="flex border-b border-gray-200 dark:border-gray-800 px-6">
                         ${['general', 'theme', 'database', 'attachments'].map(t => html`
                             <button 
@@ -217,12 +215,10 @@
                         `)}
                     </div>
 
-                    <!-- Content -->
                     <div className="flex-1 overflow-y-auto p-6">
                         
                         ${tab === 'general' && html`
                             <div className="space-y-6">
-                                <!-- Font Size -->
                                 <div className="border-b border-gray-100 dark:border-gray-800 pb-6">
                                     <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Interface Font Size</h3>
                                     <div className="flex items-center gap-4">
@@ -240,7 +236,6 @@
                                     <p className="text-xs text-gray-400 mt-2">Affects note lists. Central note is 150% of this size.</p>
                                 </div>
 
-                                <!-- Visibility -->
                                 <div className="border-b border-gray-100 dark:border-gray-800 pb-6">
                                     <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Section Visibility</h3>
                                     <div className="flex flex-col gap-3">
@@ -258,7 +253,6 @@
                                     <p className="text-xs text-gray-400 mt-2">When hidden, the section above will expand to fill the vertical space.</p>
                                 </div>
 
-                                <!-- Home Note -->
                                 <div>
                                     <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Home Note</h3>
                                     <div className="flex items-center justify-between bg-black/5 dark:bg-white/5 p-3 rounded border border-gray-200 dark:border-gray-700 mb-2">
@@ -300,7 +294,6 @@
 
                         ${tab === 'theme' && editingTheme && html`
                             <div className="flex flex-col lg:flex-row gap-6 h-full">
-                                <!-- Left Column: Controls -->
                                 <div className="flex-1 space-y-6">
                                     <div className="flex gap-2 mb-4">
                                         <select 
@@ -352,7 +345,6 @@
                                     </div>
                                 </div>
 
-                                <!-- Right Column: Live Preview -->
                                 <div className="flex-1 flex-shrink-0 min-w-0">
                                     <div className="sticky top-0">
                                         <h3 className="text-xs font-bold uppercase text-gray-500 mb-2 tracking-wider">Live Preview</h3>
@@ -360,7 +352,6 @@
                                             className=${`border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden flex flex-col h-80 text-xs select-none transition-colors duration-200 ${hl(['--background', '--foreground'])}`}
                                             style=${{ ...editingTheme.values, fontFamily: 'sans-serif' }}
                                         >
-                                            <!-- Preview Top Bar -->
                                             <div className=${`h-8 border-b flex items-center px-3 gap-2 flex-shrink-0 ${hl(['--theme-bars'])}`} style=${{backgroundColor: 'var(--theme-bars)', borderColor: 'rgba(128,128,128,0.1)'}}>
                                                 <div className="flex gap-1">
                                                     <div className=${`w-2 h-2 rounded-full ${hl(['--foreground'])}`} style=${{backgroundColor: 'var(--foreground)', opacity: 0.3}}></div>
@@ -370,16 +361,12 @@
                                                 <div className=${`w-4 h-4 rounded ${hl(['--primary'])}`} style=${{backgroundColor: 'var(--primary)'}}></div>
                                             </div>
 
-                                            <!-- Preview Canvas -->
                                             <div className=${`flex-1 p-3 flex gap-2 overflow-hidden ${hl(['--background', '--foreground'])}`} style=${{backgroundColor: 'var(--background)', color: 'var(--foreground)'}}>
-                                                <!-- Section -->
                                                 <div className=${`flex-1 rounded-lg p-2 border border-black/5 dark:border-white/5 flex flex-col gap-2 ${hl(['--theme-section'])}`} style=${{backgroundColor: 'var(--theme-section)'}}>
                                                     <div className="text-[10px] opacity-50 font-bold uppercase tracking-wider">Parents</div>
-                                                    <!-- Card -->
                                                     <div className=${`p-2 rounded border border-black/5 dark:border-white/5 ${hl(['--card', '--card-foreground'])}`} style=${{backgroundColor: 'var(--card)', color: 'var(--card-foreground)'}}>
                                                         <div className="font-medium">Project Alpha</div>
                                                     </div>
-                                                    <!-- Active Card -->
                                                     <div className=${`p-3 rounded-lg border border-black/5 dark:border-white/5 text-center my-1 shadow-sm ${hl(['--card', '--card-foreground', '--primary'])}`} style=${{backgroundColor: 'var(--card)', color: 'var(--card-foreground)', boxShadow: '0 0 0 1px var(--primary)'}}>
                                                         <div className="font-bold text-sm">Current Note</div>
                                                         <div className="text-[9px] opacity-60 mt-1 uppercase">Subtitle</div>
@@ -490,7 +477,6 @@
                         `}
                     </div>
 
-                    <!-- Footer -->
                     <div className="flex justify-end p-4 border-t border-gray-100 dark:border-gray-800">
                         <button onClick=${onClose} className="px-4 py-2 rounded bg-primary text-white hover:opacity-90">Done</button>
                     </div>
