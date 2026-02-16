@@ -1,0 +1,90 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JaRoet PKM</title>
+    
+    <script>
+        window.JaroetFallbackMode = false;
+        function fallback(cdnUrl) {
+            console.warn('Local file missing. Falling back to CDN: ' + cdnUrl);
+            window.JaroetFallbackMode = true;
+            document.write('<script src="' + cdnUrl + '"><\/script>');
+        }
+    </script>
+    <!-- STYLING -->
+    <script src="js/libs/tailwindcss.js"></script>
+    <script>if(typeof tailwind === 'undefined') fallback('https://cdn.tailwindcss.com?plugins=typography');</script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        background: 'var(--background)',
+                        foreground: 'var(--foreground)',
+                        card: 'var(--card)',
+                        'card-foreground': 'var(--card-foreground)',
+                        primary: 'var(--primary)',
+                        'primary-foreground': 'var(--primary-foreground)'
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="css/style.css">
+
+    <!-- DEPENDENCIES -->
+    <script src="js/libs/react.production.min.js"></script>
+    <script>if(typeof React === 'undefined') fallback('https://unpkg.com/react@18/umd/react.production.min.js');</script>
+    <script src="js/libs/react-dom.production.min.js"></script>
+    <script>if(typeof ReactDOM === 'undefined') fallback('https://unpkg.com/react-dom@18/umd/react-dom.production.min.js');</script>
+    <script src="js/libs/dexie.min.js"></script>
+    <script>if(typeof Dexie === 'undefined') fallback('https://unpkg.com/dexie@3.2.4/dist/dexie.min.js');</script>
+    <script src="js/libs/marked.min.js"></script>
+    <script>if(typeof marked === 'undefined') fallback('https://unpkg.com/marked@9.1.2/marked.min.js');</script>
+    <script src="js/libs/htm.umd.js"></script>
+    <script>if(typeof htm === 'undefined') fallback('https://unpkg.com/htm@3.1.1/dist/htm.umd.js');</script>
+
+    <!-- APP SCRIPTS (Order Matters) -->
+    <script src="js/globals.js"></script>
+    <script src="js/services/markdown.js"></script>
+    <script src="js/services/db.js"></script>
+    <script src="js/services/journal.js"></script>
+    <script src="js/hooks/useClickOutside.js"></script>
+    <script src="js/hooks/useListNavigation.js"></script>
+    <script src="js/hooks/useHistory.js"></script>
+    
+    <!-- COMPONENTS -->
+    <script src="js/components/Icons.js?v=0.6.0"></script>
+    <script src="js/components/NoteCard.js?v=0.6.0"></script>
+    <script src="js/components/NoteSection.js?v=0.6.0"></script>
+    <script src="js/components/LinkerModal.js?v=0.6.0"></script>
+    <script src="js/components/SectionContainer.js?v=0.6.0"></script>
+    <script src="js/components/ContentPreview.js?v=0.6.0"></script>
+    <script src="js/components/RightPane.js?v=0.6.0"></script>
+    <script src="js/components/Editor.js?v=0.6.0"></script>
+    <script src="js/components/CalendarDropdown.js?v=0.6.0"></script>
+    <script src="js/components/SettingsModal.js?v=0.6.0"></script>
+    <script src="js/components/ImportModal.js?v=0.6.0"></script>
+    <script src="js/components/RenameModal.js?v=0.6.0"></script>
+    <script src="js/components/AllNotesModal.js?v=0.6.0"></script>
+    <script src="js/components/ContentSearchModal.js?v=0.6.0"></script>
+    <script src="js/components/VaultChooser.js?v=0.6.0"></script>
+    <script src="js/components/TopBar.js?v=0.6.0"></script>
+    <script src="js/components/StatusBar.js?v=0.6.0"></script>
+    
+    <!-- MAIN APP -->
+    <script src="js/App.js?v=0.6.0"></script>
+</head>
+<body>
+    <div id="root"></div>
+    <script>
+        // Initialize App
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(window.html`<${Jaroet.App} />`);
+    </script>
+</body>
+</html>
