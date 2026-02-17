@@ -183,8 +183,13 @@
     
     const getTopology=async(cid)=>{
         const c=await db.notes.get(cid);if(!c)return{center:null,uppers:[],downers:[]};
-        const u=await db.notes.where('linksTo').equals(cid).toArray(),d=await db.notes.bulkGet(c.linksTo);
-        return{center:c,uppers:u.filter(Boolean),downers:d.filter(Boolean)};
+        let u=await db.notes.where('linksTo').equals(cid).toArray();
+        let d=(await db.notes.bulkGet(c.linksTo)).filter(Boolean);
+        
+        u.sort((a, b) => a.title.localeCompare(b.title));
+        d.sort((a, b) => a.title.localeCompare(b.title));
+        
+        return{center:c,uppers:u.filter(Boolean),downers:d};
     };
     
     const getFavorites=async()=>{const m=await db.meta.get('favoritesList');return(await db.notes.bulkGet(m?m.value:[])).filter(Boolean);};
@@ -203,9 +208,6 @@
     const deleteTheme = (id) => db.themes.delete(id);
     const getActiveThemeId = async () => (await db.meta.get('activeThemeId'))?.value || 'dark';
     const setActiveThemeId = (id) => db.meta.put({key:'activeThemeId', value:id});
-
-    const getSortOrder=async()=>(await db.meta.get('ui_sortOrder'))?.value||'title-asc';
-    const setSortOrder=(v)=>db.meta.put({key:'ui_sortOrder',value:v});
 
     // Attachment Aliases
     const getAttachmentAliases = async () => (await db.meta.get('attachmentAliases'))?.value || [];
@@ -301,7 +303,6 @@
         seedDatabase, getNote, findNoteByTitle, getNoteTitlesByPrefix, createNote, updateNote, deleteNote, getNoteCount,
         getTopology, getFavorites, toggleFavorite, getHomeNoteId, setHomeNoteId, getFontSize, setFontSize, getSectionVisibility,
         setSectionVisibility, getThemes, getTheme, saveTheme, deleteTheme, getActiveThemeId, setActiveThemeId,
-        getSortOrder, setSortOrder,
         getAttachmentAliases, saveAttachmentAliases,
         searchNotes, getAllNotes, getAllNotesSortedBy, importNotes, searchContent
     };

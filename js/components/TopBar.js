@@ -9,16 +9,14 @@
         const {
             nav, back, forward, canBack, canForward, goHome,
             cal, setCal, calD, setCalD, handleCalendarSelect, handleCalendarMonthChange,
-            favDrop, setFavDrop, favs,
             activeNote, handleFavToggle, setEd, activeHasContent, setRenN, setRen,
             canUnlink, changeRelationship, handleLinkAction,
             search, doSearch, sAct, setSAct, sRes, navSearch,
             dark, setSett, exportData, setImpD, setImp, setAllNotes, goToRandomNote, setContentSearch,
-            fontSize, sortOrder, setSortOrder, themes, onThemeSelect
+            fontSize, themes, onThemeSelect
         } = props;
 
         const searchRef = useRef(null);
-        const [sortDrop, setSortDrop] = useState(false);
         const [themeDrop, setThemeDrop] = useState(false);
 
         const { useClickOutside, useListNavigation } = J.Hooks;
@@ -35,8 +33,6 @@
         });
 
         // Use the new hook for click-outside behavior
-        const favDropdownContainerRef = useClickOutside(favDrop, useCallback(() => setFavDrop(false), []));
-        const sortDropdownRef = useClickOutside(sortDrop, useCallback(() => setSortDrop(false), []));
         const themeDropdownRef = useClickOutside(themeDrop, useCallback(() => setThemeDrop(false), []));
         const searchDropdownContainerRef = useClickOutside(sAct && sRes.length > 0, useCallback(() => {
             setSAct(false);
@@ -55,15 +51,6 @@
                 <${icon} />
             </button>
         `;
-
-        const sortOptions = [
-            { id: 'title-asc', label: 'Title (A-Z)' },
-            { id: 'title-desc', label: 'Title (Z-A)' },
-            { id: 'created-desc', label: 'Created (Newest)' },
-            { id: 'created-asc', label: 'Created (Oldest)' },
-            { id: 'modified-desc', label: 'Modified (Newest)' },
-            { id: 'modified-asc', label: 'Modified (Oldest)' }
-        ];
 
         // Vertical Separator
         const Sep = () => html`<div className="h-5 w-px bg-current opacity-10 mx-1"></div>`;
@@ -88,41 +75,9 @@
                         <${CalendarDropdown} isOpen=${cal} onClose=${()=>setCal(false)} onSelectDate=${handleCalendarSelect} existingDates=${calD} onMonthChange=${handleCalendarMonthChange} />
                     </div>
 
-                    <div className="relative">
-                        <${Btn} onClick=${()=>setFavDrop(p=>!p)} icon=${Icons.FavList} title="Favorites" active=${favDrop} />
-                        ${favDrop&&html`
-                            <div 
-                                className="absolute top-full left-0 mt-2 w-64 bg-card border border-gray-200 dark:border-gray-700 shadow-xl rounded-md z-50 max-h-80 overflow-y-auto animate-in fade-in zoom-in-95 duration-100"
-                                onClick=${e => e.stopPropagation()}
-                            >
-                                <div className="p-2 text-xs font-bold uppercase text-gray-500 border-b dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50">Favorites</div>
-                                ${favs.length===0?html`<div className="p-4 text-center text-sm text-gray-400 italic">No favorites yet</div>`:favs.map(f=>html`<div key=${f.id} onClick=${()=>{nav(f.id);setFavDrop(false)}} className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer text-sm truncate">${f.title}</div>`)}
-                            </div>
-                        `}
-                    </div>
-
                     <${Btn} onClick=${() => setContentSearch(true)} icon=${Icons.Search} title="Content Search (Ctrl+Shift+F)" />
                     <${Btn} onClick=${() => setAllNotes(true)} icon=${Icons.List} title="All Notes" />
                     <${Btn} onClick=${goToRandomNote} icon=${Icons.Shuffle} title="Random Note (Ctrl+Alt+R)" />
-
-                    <div className="relative">
-                        <${Btn} onClick=${()=>setSortDrop(p=>!p)} icon=${Icons.Sort} title="Sort Order" active=${sortDrop} />
-                        ${sortDrop&&html`
-                            <div 
-                                ref=${sortDropdownRef}
-                                className="absolute top-full left-0 mt-2 w-48 bg-card border border-gray-200 dark:border-gray-700 shadow-xl rounded-md z-50 animate-in fade-in zoom-in-95 duration-100"
-                                onClick=${e => e.stopPropagation()}
-                            >
-                                <div className="p-2 text-xs font-bold uppercase text-gray-500 border-b dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50">Sort By</div>
-                                ${sortOptions.map(opt => html`
-                                    <div key=${opt.id} onClick=${()=>{setSortOrder(opt.id);setSortDrop(false)}} className=${`px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer text-sm flex justify-between items-center ${sortOrder===opt.id?'text-primary font-medium':''}`}>
-                                        ${opt.label}
-                                        ${sortOrder===opt.id&&html`<span className="text-xs">✓</span>`}
-                                    </div>
-                                `)}
-                            </div>
-                        `}
-                    </div>
                 </div>
 
                 <${Sep} />

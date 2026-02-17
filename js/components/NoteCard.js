@@ -16,7 +16,7 @@
                             backgroundColor: isFocused ? 'color-mix(in srgb, var(--primary) 20%, transparent)' : undefined,
                             boxShadow: isFocused ? '0 0 0 2px color-mix(in srgb, var(--primary) 50%, transparent)' : undefined
                         }}
-                        className=${`font-bold leading-tight select-none px-4 py-2 rounded-lg transition-all text-foreground ${isFocused ? 'backdrop-blur-sm shadow-sm' : ''}`}
+                        className=${`font-bold leading-tight select-none px-4 py-2 rounded-lg transition-all text-primary ${isFocused ? 'backdrop-blur-sm shadow-sm' : ''}`}
                     >
                         ${note.title}
                     </div>
