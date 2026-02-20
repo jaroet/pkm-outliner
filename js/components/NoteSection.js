@@ -4,6 +4,7 @@
 
     J.NoteSection = ({notes,section,containerClasses,itemClasses,containerId,fontSize,focusedSection,focusedIndex,selectedNoteIds,onNoteClick,scrollPositionsRef,onAddAfter}) => {
         const { NoteCard } = J;
+        const { getDateSubtitle } = J.Services.Journal;
         
         // Restore scroll position when list content changes
         useLayoutEffect(()=>{
@@ -28,6 +29,7 @@
                         onClick=${e=>onNoteClick(n.id,e.ctrlKey)} 
                         className=${itemClasses} 
                         onAddAfter=${onAddAfter}
+                        subtitle=${getDateSubtitle(n.title)}
                     />
                 `)}
             </div>

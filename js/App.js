@@ -1,11 +1,27 @@
 
 (function(J) {
+    // Helper to get caret coordinates for autocomplete popup
+    const getCaretCoordinates = (element, position) => {
+        const div = document.createElement('div');
+        const style = window.getComputedStyle(element);
+        Array.from(style).forEach(prop => div.style.setProperty(prop, style.getPropertyValue(prop)));
+        div.style.position = 'absolute'; div.style.visibility = 'hidden'; div.style.whiteSpace = 'pre-wrap';
+        div.style.top = '0'; div.style.left = '0';
+        div.textContent = element.value.substring(0, position);
+        const span = document.createElement('span'); span.textContent = element.value.substring(position) || '.';
+        div.appendChild(span);
+        document.body.appendChild(div);
+        const coordinates = { top: span.offsetTop + parseInt(style.borderTopWidth), left: span.offsetLeft + parseInt(style.borderLeftWidth), height: parseInt(style.lineHeight) };
+        document.body.removeChild(div);
+        return coordinates;
+    };
+
     const { useState, useEffect, useRef, useCallback, useMemo } = React;
     const { db, getTopology, createNote, updateNote, deleteNote, getFavorites, toggleFavorite, seedDatabase, getNote, getAllNotes, importNotes, getHomeNoteId, searchNotes, getFontSize, getNoteCount, getVaultList, getCurrentVaultName, switchVault, getSectionVisibility, findNoteByTitle, getNoteTitlesByPrefix, getActiveThemeId, getTheme, setActiveThemeId, getThemes, getAttachmentAliases } = J.Services.DB;
     const { goToDate, goToToday, getDateSubtitle } = J.Services.Journal; 
     const { createRenderer, wikiLinkExtension, setAttachmentAliases } = J.Services.Markdown;
     const { NoteCard, LinkerModal, Editor, SettingsModal, ImportModal, RenameModal, NoteSection, TopBar, StatusBar, Icons, AllNotesModal, ContentSearchModal, VaultChooser, APP_VERSION } = J;
-    const { useHistory } = J.Hooks;
+    const { useHistory, useListNavigation, useClickOutside } = J.Hooks;
 
     marked.use({renderer:createRenderer({clickableCheckboxes:false}),extensions:[wikiLinkExtension]});
 
@@ -16,6 +32,10 @@
         const [contentSource, setContentSource] = useState(null);
         const [isEditing, setIsEditing] = useState(false);
         const [editContent, setEditContent] = useState('');
+
+        // Autocomplete State
+        const [sug,setSug]=useState(false);const [sq,setSq]=useState('');const [sres,setSres]=useState([]);
+        const [cPos,setCPos]=useState({top:0,left:0});const [trigIdx,setTrigIdx]=useState(-1);
 
         // Resizable Pane State
         const [splitRatio, setSplitRatio] = useState(0.5);
@@ -175,6 +195,57 @@
             }
         }, [fSec, isEditing]);
 
+        // Autocomplete Logic
+        useEffect(()=>{
+            if(sug){
+                const t=setTimeout(async()=>{
+                    setSres(await searchNotes(sq)); 
+                },150);
+                return ()=>clearTimeout(t);
+            }
+        },[sq,sug]);
+
+        const handleContentChange = (e) => {
+            const v = e.target.value;
+            setEditContent(v);
+            const c = e.target.selectionEnd;
+            const lo = v.lastIndexOf('[[', c);
+            if (lo !== -1) {
+                const tb = v.slice(lo + 2, c);
+                if (tb.includes(']]') || tb.includes('\n')) {
+                    setSug(false);
+                } else {
+                    setTrigIdx(lo);
+                    setSq(tb);
+                    setSug(true);
+                    const coords = getCaretCoordinates(e.target, lo);
+                    setCPos({ top: coords.top - e.target.scrollTop, left: coords.left - e.target.scrollLeft });
+                }
+            } else {
+                setSug(false);
+            }
+        };
+
+        const insertLink = (title) => {
+            const b = editContent.slice(0, trigIdx);
+            const a = editContent.slice(textareaRef.current.selectionEnd);
+            const n = `${b}[[${title}]]${a}`;
+            setEditContent(n);
+            setSug(false);
+            setTimeout(() => {
+                if (textareaRef.current) {
+                    textareaRef.current.focus();
+                    const p = trigIdx + 2 + title.length + 2;
+                    textareaRef.current.setSelectionRange(p, p);
+                }
+            }, 50);
+        };
+
+        const { activeIndex: sugIdx, setActiveIndex: setSugIdx, listRef: sugListRef, handleKeyDown: handleAutocompleteKeyDown } = useListNavigation({
+            isOpen: sug, itemCount: sres.length, onEnter: (index) => { if (sres[index]) insertLink(sres[index].title); }, onEscape: () => setSug(false)
+        });
+        const autocompleteDropdownRef = useClickOutside(sug, useCallback(() => setSug(false), []));
+
         // Auto-save logic
         const saveContent = useCallback(async (content) => {
             if (!activeNote) return;
@@ -239,9 +310,9 @@
             if (tid) { await doL(tid); } 
             else if (t) {
                 for (let title of t.split(';').map(x => x.trim()).filter(Boolean)) {
-                    if (title.startsWith(', ')) {
+                    if (title.endsWith(' ,')) {
                         const sourceNote = await getNote(aid);
-                        if (sourceNote) title = `${sourceNote.title} ${title.substring(2)}`.trim();
+                        if (sourceNote) title = `${title.substring(0, title.length - 2).trim()} - ${sourceNote.title}`.trim();
                     }
                     let noteToLink = await findNoteByTitle(title);
                     if (!noteToLink) noteToLink = await createNote(title);
@@ -319,18 +390,10 @@
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'j') { e.preventDefault(); nav(await goToToday()); return; }
             if ((e.ctrlKey || e.metaKey) && e.altKey && (e.code === 'KeyR' || e.key.toLowerCase() === 'r')) { e.preventDefault(); goToRandomNote(); return; }
             if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'f') { e.preventDefault(); setContentSearch(true); return; }
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'h') { e.preventDefault(); const h = await getHomeNoteId(); if(h) nav(h); return; }
             if (e.key === 'x' && fSecState !== 'content') {
                 e.preventDefault(); const note = (fSecState==='center'||fSecState==='content') ? topoState.center : getSortedNotes(fSecState, topoState, favsState)[fIdxState];
                 if (note && note.id !== currentId) { togSel(note.id); const list = getSortedNotes(fSecState, topoState, favsState); if (fIdxState < list.length - 1) setFIdx(p=>p+1); } return;
-            }
-
-            if (e.key.length === 1 && e.key !== ' ' && !e.ctrlKey && !e.altKey && !e.metaKey && (fSecState === 'up' || fSecState === 'down')) {
-                const list = getSortedNotes(fSecState, topoState, favsState);
-                const char = e.key.toLowerCase();
-                let nextIdx = -1;
-                for(let i = fIdxState + 1; i < list.length; i++) { if(list[i].title.toLowerCase().startsWith(char)) { nextIdx = i; break; } }
-                if(nextIdx === -1) { for(let i = 0; i <= fIdxState; i++) { if(list[i].title.toLowerCase().startsWith(char)) { nextIdx = i; break; } } }
-                if(nextIdx !== -1) { e.preventDefault(); setFIdx(nextIdx); return; }
             }
 
             if ((e.ctrlKey || e.metaKey) && e.key === 'Backspace' && fSecState !== 'content') {
@@ -510,6 +573,7 @@
                                         onClick=${()=>{}} 
                                         className="font-bold w-full text-primary"
                                         id="note-center-0"
+                                        subtitle=${subT}
                                     />
                                     <div className="flex gap-1 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-1/2 -translate-y-1/2">
                                         ${topo.center.isFavorite&&html`<${Icons.Star} width="14" height="14" fill="currentColor" />`}
@@ -575,9 +639,27 @@
                                     ref=${textareaRef}
                                     className="w-full h-full bg-transparent resize-none outline-none font-mono custom-scrollbar p-8"
                                     value=${editContent}
-                                    onChange=${(e) => setEditContent(e.target.value)}
+                                    onChange=${handleContentChange}
+                                    onKeyDown=${(e) => {
+                                        if (sug) {
+                                            if (['ArrowUp', 'ArrowDown', 'Enter', 'Tab', 'Escape'].includes(e.key)) {
+                                                e.stopPropagation();
+                                                handleAutocompleteKeyDown(e);
+                                            }
+                                        }
+                                    }}
                                     placeholder="Start typing..."
                                 ></textarea>
+                                ${sug && html`
+                                    <div ref=${(el) => { autocompleteDropdownRef.current = el; sugListRef.current = el; }} className="absolute z-50 w-64 bg-card border border-gray-200 dark:border-gray-700 shadow-xl rounded-md max-h-60 overflow-y-auto custom-scrollbar" style=${{top:cPos.top+30,left:cPos.left+24}}>
+                                        ${sres.length===0?html`<div className="p-2 text-xs text-gray-500 italic">No matching notes</div>`
+                                        :sres.map((s,i)=>html`
+                                            <div key=${s.id} onClick=${()=>insertLink(s.title)} onMouseEnter=${() => setSugIdx(i)} className=${`px-3 py-2 text-sm cursor-pointer ${i===sugIdx?'bg-primary text-primary-foreground':'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
+                                                ${s.title}
+                                            </div>
+                                        `)}
+                                    </div>
+                                `}
                             ` : activeNote ? html`
                                 <div 
                                     ref=${previewRef}

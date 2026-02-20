@@ -63,6 +63,7 @@
                     </span>
                 ` : html`<span className="mr-1 w-4 h-4 flex-shrink-0"></span>`}
                 <span className="truncate">${note.title}</span>
+                ${subtitle && html`<span className="ml-2 opacity-50 text-[0.8em] truncate flex-shrink-0 font-normal">${subtitle}</span>`}
                 ${onAddAfter && html`
                     <span 
                         onClick=${(e) => { e.stopPropagation(); onAddAfter(note.id); }}
