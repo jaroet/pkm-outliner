@@ -54,6 +54,7 @@
             }
             if (updates.length > 0) await tx.table('notes').bulkPut(updates);
         });
+        this.version(6).stores({notes:'id,title,*linksTo,*outgoingLinks,createdAt,modifiedAt,childSort', themes: 'id'});
     }}
     const db=new DB(); 
 
@@ -185,9 +186,29 @@
         const c=await db.notes.get(cid);if(!c)return{center:null,uppers:[],downers:[]};
         let u=await db.notes.where('linksTo').equals(cid).toArray();
         let d=(await db.notes.bulkGet(c.linksTo)).filter(Boolean);
-        
+
         u.sort((a, b) => a.title.localeCompare(b.title));
         
+        let sortMode = c.childSort;
+        if (!sortMode) {
+            const isJournal = /^(Journal Hub|\d{4}(-\d{2})?(-\d{2})?)$/.test(c.title);
+            sortMode = isJournal ? 'title_desc' : 'title_asc';
+        }
+
+        if (sortMode !== 'manual') {
+            d.sort((a, b) => {
+                switch (sortMode) {
+                    case 'title_asc': return a.title.localeCompare(b.title);
+                    case 'title_desc': return b.title.localeCompare(a.title);
+                    case 'created_asc': return a.createdAt - b.createdAt;
+                    case 'created_desc': return b.createdAt - a.createdAt;
+                    case 'modified_asc': return a.modifiedAt - b.modifiedAt;
+                    case 'modified_desc': return b.modifiedAt - a.modifiedAt;
+                    default: return 0;
+                }
+            });
+        }
+
         return{center:c,uppers:u.filter(Boolean),downers:d};
     };
     

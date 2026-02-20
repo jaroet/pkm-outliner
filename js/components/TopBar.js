@@ -13,11 +13,12 @@
             canUnlink, changeRelationship, handleLinkAction,
             search, doSearch, sAct, setSAct, sRes, navSearch,
             dark, setSett, exportData, setImpD, setImp, setAllNotes, goToRandomNote, setContentSearch,
-            fontSize, themes, onThemeSelect
+            fontSize, themes, onThemeSelect, onSortChange
         } = props;
 
         const searchRef = useRef(null);
         const [themeDrop, setThemeDrop] = useState(false);
+        const [sortDrop, setSortDrop] = useState(false);
 
         const { useClickOutside, useListNavigation } = J.Hooks;
 
@@ -34,6 +35,7 @@
 
         // Use the new hook for click-outside behavior
         const themeDropdownRef = useClickOutside(themeDrop, useCallback(() => setThemeDrop(false), []));
+        const sortDropdownRef = useClickOutside(sortDrop, useCallback(() => setSortDrop(false), []));
         const searchDropdownContainerRef = useClickOutside(sAct && sRes.length > 0, useCallback(() => {
             setSAct(false);
             searchRef.current?.blur(); // Optionally blur the search input
@@ -54,6 +56,17 @@
 
         // Vertical Separator
         const Sep = () => html`<div className="h-5 w-px bg-current opacity-10 mx-1"></div>`;
+
+        const currentSort = activeNote?.childSort || (
+            (/^(Journal Hub|\d{4}(-\d{2})?(-\d{2})?)$/.test(activeNote?.title) ? 'title_desc' : 'title_asc')
+        );
+
+        const sortLabels = {
+            'manual': 'Manual',
+            'title_asc': 'A-Z', 'title_desc': 'Z-A',
+            'created_asc': 'Oldest', 'created_desc': 'Newest',
+            'modified_asc': 'Least Recent', 'modified_desc': 'Most Recent'
+        };
 
         return html`
             <div 
@@ -78,6 +91,17 @@
                     <${Btn} onClick=${() => setContentSearch(true)} icon=${Icons.Search} title="Content Search (Ctrl+Shift+F)" />
                     <${Btn} onClick=${() => setAllNotes(true)} icon=${Icons.List} title="All Notes" />
                     <${Btn} onClick=${goToRandomNote} icon=${Icons.Shuffle} title="Random Note (Ctrl+Alt+R)" />
+                    
+                    <div className="relative">
+                        <button onClick=${()=>setSortDrop(!sortDrop)} style=${{ color: 'var(--theme-accent)' }} className="px-2 py-1.5 text-xs font-medium rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors h-8 flex items-center" title="Sort Order">
+                            ${sortLabels[currentSort] || 'Sort'}
+                        </button>
+                        ${sortDrop && html`
+                            <div ref=${sortDropdownRef} className="absolute top-full left-0 mt-1 w-32 bg-card border border-gray-200 dark:border-gray-700 shadow-xl rounded-md z-50 py-1">
+                                ${Object.entries(sortLabels).map(([k, v]) => html`<div key=${k} onClick=${() => { onSortChange(k); setSortDrop(false); }} className=${`px-4 py-2 text-xs cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 ${currentSort === k ? 'font-bold text-primary' : ''}`}>${v}</div>`)}
+                            </div>
+                        `}
+                    </div>
                 </div>
 
                 <${Sep} />

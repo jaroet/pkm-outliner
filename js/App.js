@@ -328,6 +328,13 @@
             }
             if(currentId) getTopology(currentId).then(setTopo); getNoteCount().then(setCount);
         };
+        
+        const handleSortChange = async (mode) => {
+            if (activeNote) {
+                await updateNote(activeNote.id, { childSort: mode });
+                getTopology(currentId).then(setTopo);
+            }
+        };
 
         const handleAddNoteAfter = async (refNoteId) => {
             if (!topo.center) return;
@@ -410,6 +417,12 @@
             
             // Reorder Child Notes (Ctrl+Shift+Up/Down)
             if ((e.ctrlKey || e.metaKey) && e.shiftKey && fSecState === 'down') {
+                const currentSort = topoState.center?.childSort || (
+                    (/^(Journal Hub|\d{4}(-\d{2})?(-\d{2})?)$/.test(topoState.center?.title) ? 'title_desc' : 'title_asc')
+                );
+                
+                if (currentSort !== 'manual') return;
+
                 if (e.key === 'ArrowUp') {
                     e.preventDefault();
                     if (fIdxState > 0 && topoState.center) {
@@ -548,6 +561,7 @@
                     }}
                     themes=${themes}
                     dark=${dark} setSett=${setSett} exportData=${exportData} setImpD=${setImpD} setImp=${setImp} fontSize=${fs}
+                    onSortChange=${handleSortChange}
                 />
 
                 <div ref=${containerRef} className="flex-1 flex overflow-hidden bg-background relative transition-colors duration-300">
