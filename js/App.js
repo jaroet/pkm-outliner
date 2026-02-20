@@ -17,7 +17,7 @@
     };
 
     const { useState, useEffect, useRef, useCallback, useMemo } = React;
-    const { db, getTopology, createNote, updateNote, deleteNote, getFavorites, toggleFavorite, seedDatabase, getNote, getAllNotes, importNotes, getHomeNoteId, searchNotes, getFontSize, getNoteCount, getVaultList, getCurrentVaultName, switchVault, getSectionVisibility, findNoteByTitle, getNoteTitlesByPrefix, getActiveThemeId, getTheme, setActiveThemeId, getThemes, getAttachmentAliases } = J.Services.DB;
+    const { db, getTopology, createNote, updateNote, deleteNote, getFavorites, toggleFavorite, seedDatabase, getNote, getAllNotes, importNotes, getHomeNoteId, searchNotes, getFontSize, getNoteCount, getVaultList, getCurrentVaultName, switchVault, getSectionVisibility, findNoteByTitle, getNoteTitlesByPrefix, getActiveThemeId, getTheme, setActiveThemeId, getThemes, getAttachmentAliases, getSplitRatio, setSplitRatio: dbSetSplitRatio } = J.Services.DB;
     const { goToDate, goToToday, getDateSubtitle } = J.Services.Journal; 
     const { createRenderer, wikiLinkExtension, setAttachmentAliases } = J.Services.Markdown;
     const { NoteCard, LinkerModal, Editor, SettingsModal, ImportModal, RenameModal, NoteSection, TopBar, StatusBar, Icons, AllNotesModal, ContentSearchModal, VaultChooser, APP_VERSION } = J;
@@ -104,6 +104,7 @@
                 getFontSize().then(setFs);
                 getSectionVisibility().then(setVis);
                 getFavorites().then(setFavs);
+                getSplitRatio().then(setSplitRatio);
                 getThemes().then(setThemes);
                 getAttachmentAliases().then(a => {
                     setAttachmentAliases(a);
@@ -194,6 +195,12 @@
                 }
             }
         }, [fSec, isEditing]);
+
+        // Persist split ratio
+        useEffect(() => {
+            const t = setTimeout(() => dbSetSplitRatio(splitRatio), 200);
+            return () => clearTimeout(t);
+        }, [splitRatio]);
 
         // Autocomplete Logic
         useEffect(()=>{
