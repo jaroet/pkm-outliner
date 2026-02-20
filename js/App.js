@@ -14,6 +14,7 @@
         const {currentId,visit,replace,back,forward,canBack,canForward}=useHistory();
         const [topo,setTopo]=useState({center:null,uppers:[],downers:[]}),[favs,setFavs]=useState([]),[dark,setDark]=useState(true),[fs,setFs]=useState(16),[vis,setVis]=useState({showFavorites:true,showContent:true}),[count,setCount]=useState(0),[themes,setThemes]=useState([]), [mentions, setMentions] = useState([]);
         const [contentSource, setContentSource] = useState(null);
+        const [isEditing, setIsEditing] = useState(false);
         const [editContent, setEditContent] = useState('');
 
         // Resizable Pane State
@@ -63,6 +64,7 @@
         const visRef=useRef({showFavorites:true,showContent:true});
         const secIndRef=useRef({up:0,down:0,favs:0});
         const mentionsRef=useRef([]);
+        const isEditingRef=useRef(false);
 
         // UI State & Modals (removed `menu` and `setMenu`)
         const [cal,setCal]=useState(false),[calD,setCalD]=useState(new Set());
@@ -72,6 +74,7 @@
         const [ed,setEd]=useState(false),[edMode,setEdMode]=useState('view'),[lnk,setLnk]=useState(false),[lnkType,setLnkType]=useState('up'),[ren,setRen]=useState(false),[renN,setRenN]=useState(null),[sett,setSett]=useState(false),[imp,setImp]=useState(false),[impD,setImpD]=useState([]),[allNotes,setAllNotes]=useState(false);
         const searchInputRef=useRef(null);
         const textareaRef = useRef(null);
+        const previewRef = useRef(null);
 
         // --- Effects & Sync ---
         useEffect(()=>{
@@ -133,6 +136,7 @@
         useEffect(()=>{visRef.current=vis},[vis]);
         useEffect(()=>{secIndRef.current=secInd},[secInd]);
         useEffect(()=>{mentionsRef.current=mentions},[mentions]);
+        useEffect(()=>{isEditingRef.current=isEditing},[isEditing]);
 
         const getSortedNotes = (sec, t=topo, f=favs, m=mentions) => {
             if(sec==='center')return t.center?[t.center]:[];
@@ -173,9 +177,18 @@
 
         useEffect(() => {
             if (fSec === 'content') {
-                setTimeout(() => textareaRef.current?.focus(), 50);
+                if (isEditing) {
+                    setTimeout(() => {
+                        if (textareaRef.current) {
+                            textareaRef.current.focus();
+                            textareaRef.current.setSelectionRange(textareaRef.current.value.length, textareaRef.current.value.length);
+                        }
+                    }, 50);
+                } else {
+                    setTimeout(() => previewRef.current?.focus(), 50);
+                }
             }
-        }, [fSec]);
+        }, [fSec, isEditing]);
 
         // Auto-save logic
         const saveContent = useCallback(async (content) => {
@@ -253,6 +266,19 @@
             if(currentId) getTopology(currentId).then(setTopo); getNoteCount().then(setCount);
         };
 
+        const handleAddNoteAfter = async (refNoteId) => {
+            if (!topo.center) return;
+            const center = topo.center;
+            const newNote = await createNote('New Note');
+            const currentLinks = center.linksTo || [];
+            const newLinks = [...currentLinks];
+            const idx = currentLinks.indexOf(refNoteId);
+            if (idx !== -1) newLinks.splice(idx + 1, 0, newNote.id); else newLinks.push(newNote.id);
+            await updateNote(center.id, { linksTo: newLinks });
+            await getTopology(currentId).then(setTopo); getNoteCount().then(setCount);
+            setRenN(newNote); setRen(true);
+        };
+
         const changeRelationship = async (type) => {
             const targets = sel.size > 0 ? Array.from(sel) : (getFocusedNote() ? [getFocusedNote().id] : []);
             if(!targets.length || !currentId) return;
@@ -292,7 +318,7 @@
 
         // --- KEYBOARD HANDLER ---
         const handleGlobalKeyDown = useCallback(async (e) => {
-            const selState=selRef.current, fSecState=fSecRef.current, fIdxState=fIdxRef.current, topoState=topoRef.current, favsState=favsRef.current, secIndState=secIndRef.current, mentionsState=mentionsRef.current;
+            const selState=selRef.current, fSecState=fSecRef.current, fIdxState=fIdxRef.current, topoState=topoRef.current, favsState=favsRef.current, secIndState=secIndRef.current, mentionsState=mentionsRef.current, isEditingState=isEditingRef.current;
             if (ren||ed||lnk||sett||imp||cal||allNotes||vaultChooser||contentSearch) { if (e.key === 'Escape') { if(cal) setCal(false); if(allNotes) setAllNotes(false); if(vaultChooser) setVaultChooser(false); if(contentSearch) setContentSearch(false); } return; }
             if (sAct) {
                 if (e.key==='Escape') { setSAct(false); setFSec('center'); e.preventDefault(); return; }
@@ -334,40 +360,69 @@
             if (e.key === 'F2') { e.preventDefault(); const n = getFocusedNote(); if(n) { setRenN(n); setRen(true); } return; }
             if (e.key === ' ' && fSecState !== 'content') { e.preventDefault(); const n = getFocusedNote(); if(n && n.id !== currentId) nav(n.id); return; }
             
-            if (e.key === 'Enter' && fSecState !== 'content') {
-                e.preventDefault();
-                
-                const list = getSortedNotes(fSecState, topoState, favsState, mentionsState);
-                const refNote = list[fIdxState];
-
-                if (fSecState !== 'up' && fSecState !== 'down') return;
-                if (!refNote) return;
-
-                const newNote = await createNote('New Note');
-
-                if (fSecState === 'down') {
-                    const center = topoState.center;
-                    const currentLinks = center.linksTo || [];
-                    const newLinks = [...currentLinks];
-                    const idx = currentLinks.indexOf(refNote.id);
-                    if (idx !== -1) newLinks.splice(idx + 1, 0, newNote.id); else newLinks.push(newNote.id);
-                    await updateNote(center.id, { linksTo: newLinks });
-                } else if (fSecState === 'up') {
-                    await updateNote(newNote.id, { linksTo: [currentId] });
+            // Reorder Child Notes (Ctrl+Shift+Up/Down)
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && fSecState === 'down') {
+                if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (fIdxState > 0 && topoState.center) {
+                        const links = [...topoState.center.linksTo];
+                        const currentNote = topoState.downers[fIdxState];
+                        const prevNote = topoState.downers[fIdxState - 1];
+                        if (currentNote && prevNote) {
+                            const cIdx = links.indexOf(currentNote.id);
+                            const pIdx = links.indexOf(prevNote.id);
+                            if (cIdx !== -1 && pIdx !== -1) {
+                                [links[cIdx], links[pIdx]] = [links[pIdx], links[cIdx]];
+                                await updateNote(topoState.center.id, { linksTo: links });
+                                await getTopology(currentId).then(setTopo);
+                                setFIdx(fIdxState - 1);
+                            }
+                        }
+                    }
+                    return;
                 }
-
-                await getTopology(currentId).then(setTopo); getNoteCount().then(setCount);
-                setRenN(newNote); setRen(true); return;
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (fIdxState < topoState.downers.length - 1 && topoState.center) {
+                        const links = [...topoState.center.linksTo];
+                        const currentNote = topoState.downers[fIdxState];
+                        const nextNote = topoState.downers[fIdxState + 1];
+                        if (currentNote && nextNote) {
+                            const cIdx = links.indexOf(currentNote.id);
+                            const nIdx = links.indexOf(nextNote.id);
+                            if (cIdx !== -1 && nIdx !== -1) {
+                                [links[cIdx], links[nIdx]] = [links[nIdx], links[cIdx]];
+                                await updateNote(topoState.center.id, { linksTo: links });
+                                await getTopology(currentId).then(setTopo);
+                                setFIdx(fIdxState + 1);
+                            }
+                        }
+                    }
+                    return;
+                }
             }
-            
+
+            if (e.shiftKey && e.key === 'Enter') {
+                e.preventDefault();
+                if (fSecState !== 'content') {
+                    setContentSource(fSecState);
+                    setFSec('content');
+                    setIsEditing(true);
+                } else {
+                    setIsEditing(p => !p);
+                }
+                return;
+            }
+
             if (e.key === 'Tab') {
                 e.preventDefault();
                 if (fSecState === 'content') { 
                     setFSec(contentSource || 'center'); 
+                    setIsEditing(false);
                 } else { 
                     setContentSource(fSecState);
                     setFSec('content'); 
-                    setTimeout(() => textareaRef.current?.focus(), 50);
+                    setIsEditing(false);
                 }
                 return;
             }
@@ -484,6 +539,7 @@
                                     containerClasses="flex flex-col" 
                                     itemClasses="w-full" 
                                     containerId="container-down" 
+                                    onAddAfter=${handleAddNoteAfter}
                                     ...${sp} 
                                 />
                             </div>
@@ -525,21 +581,23 @@
 
                     <div 
                         style=${{ borderColor: 'color-mix(in srgb, var(--primary) 20%, transparent)' }}
-                        className="flex-1 h-full overflow-y-auto custom-scrollbar bg-background p-8 border-l min-w-0"
+                        className="flex-1 h-full bg-background border-l min-w-0 relative"
                         onClick=${() => setFSec('content')}
                     >
-                            ${fSec === 'content' && activeNote ? html`
+                            ${fSec === 'content' && isEditing && activeNote ? html`
                                 <textarea
                                     ref=${textareaRef}
-                                    className="w-full h-full bg-transparent resize-none outline-none font-mono custom-scrollbar p-2"
+                                    className="w-full h-full bg-transparent resize-none outline-none font-mono custom-scrollbar p-8"
                                     value=${editContent}
                                     onChange=${(e) => setEditContent(e.target.value)}
                                     placeholder="Start typing..."
                                 ></textarea>
-                            ` : activeNote && activeNote.content ? html`
+                            ` : activeNote ? html`
                                 <div 
-                                    className=${`prose dark:prose-invert max-w-none compact-markdown transition-all duration-200 ${fSec==='content' ? 'ring-2 ring-primary/10 rounded-lg p-2' : ''}`} 
-                                    dangerouslySetInnerHTML=${{ __html: prevH }}
+                                    ref=${previewRef}
+                                    tabIndex=${0}
+                                    className=${`w-full h-full overflow-y-auto custom-scrollbar p-8 prose dark:prose-invert max-w-none compact-markdown transition-all duration-200 outline-none ${fSec==='content' ? 'ring-2 ring-primary/10 rounded-lg' : ''}`} 
+                                    dangerouslySetInnerHTML=${{ __html: prevH || '<span class="text-gray-400 italic">No content</span>' }}
                                     onClick=${async (e) => {
                                         if (e.target.classList.contains('internal-link') && e.target.dataset.title) {
                                             e.preventDefault();

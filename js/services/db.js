@@ -187,7 +187,6 @@
         let d=(await db.notes.bulkGet(c.linksTo)).filter(Boolean);
         
         u.sort((a, b) => a.title.localeCompare(b.title));
-        d.sort((a, b) => a.title.localeCompare(b.title));
         
         return{center:c,uppers:u.filter(Boolean),downers:d};
     };

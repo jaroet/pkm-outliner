@@ -167,19 +167,15 @@
 
             if(e.key==='Escape'){e.preventDefault();onClose();return;}
             
-            // Ctrl+Enter (Toggle Edit)
-            if((e.ctrlKey||e.metaKey)&&e.key==='Enter'&&!e.shiftKey){
+            // Shift+Enter (Toggle Edit/View)
+            if(e.shiftKey&&e.key==='Enter'){
                 e.preventDefault();
-                if(prev) { setPrev(false); setTimeout(()=>ta.current?.focus(),50); }
-                else onClose();
-                return;
-            }
-
-            // Shift+Enter (Toggle View / Save)
-            if(e.shiftKey&&e.key==='Enter'&&!e.ctrlKey){
-                e.preventDefault();
-                if(prev) onClose();
-                else { 
+                if(prev) { 
+                    // Switch to Edit
+                    setPrev(false); 
+                    setTimeout(()=>ta.current?.focus(),50); 
+                } else { 
+                    // Save and Switch to View
                     (async () => { 
                         await onSave(note.id,txt); 
                         setPrev(true); setTimeout(()=>prevRef.current?.focus(),50); 
@@ -298,7 +294,7 @@
                         `}
                     </div>
                     <div className="p-2 text-xs text-gray-500 border-t dark:border-gray-700 text-center bg-background/50 rounded-b-lg">
-                        ${prev?'View Mode • Ctrl+Enter: Edit • Shift+Enter: Close • Esc: Close':'Edit Mode • [[ for links • Shift+Enter: Save & View • Ctrl+Enter: Cancel & Close • Esc: Cancel'}
+                        ${prev?'View Mode • Shift+Enter: Edit • Esc: Close':'Edit Mode • [[ for links • Shift+Enter: Save & View • Esc: Cancel'}
                     </div>
                 </div>
             </div>

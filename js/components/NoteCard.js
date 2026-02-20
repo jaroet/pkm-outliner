@@ -1,7 +1,7 @@
 
 (function(J) {
     const { Icons } = J;
-    J.NoteCard = ({ note, isFocused, isSelected, isCenter, fontSize, onClick, className, id, subtitle }) => {
+    J.NoteCard = ({ note, isFocused, isSelected, isCenter, fontSize, onClick, className, id, subtitle, onAddAfter }) => {
         // Central Note Style
         if (isCenter) {
             return html`
@@ -62,7 +62,14 @@
                         </svg>
                     </span>
                 ` : html`<span className="mr-1 w-4 h-4 flex-shrink-0"></span>`}
-                <span className="truncate flex-1">${note.title}</span>
+                <span className="truncate">${note.title}</span>
+                ${onAddAfter && html`
+                    <span 
+                        onClick=${(e) => { e.stopPropagation(); onAddAfter(note.id); }}
+                        className="ml-3 opacity-0 group-hover:opacity-50 hover:!opacity-100 cursor-pointer text-lg font-bold flex-shrink-0 w-6 h-6 flex items-center justify-center rounded hover:bg-black/10 dark:hover:bg-white/10"
+                        title="Add note after"
+                    >+</span>
+                `}
                 ${isSelected && html`
                     <span className="absolute right-2 w-2 h-2 rounded-full bg-primary"></span>
                 `}
