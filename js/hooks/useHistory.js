@@ -6,10 +6,9 @@
         const [h,setH]=useState(init?[init]:[]);const [i,setI]=useState(init?0:-1);
         
         const visit=useCallback((id)=>{
+            if (i >= 0 && h[i] === id) return;
+
             setH(p=>{
-                // If visiting same note, do nothing
-                if(p[i]===id) return p;
-                
                 // Slice forward history, push new
                 const n=p.slice(0,i+1);
                 n.push(id);
@@ -23,7 +22,7 @@
                 const l=i+2>50?49:i+1; 
                 return l;
             }); 
-        },[i]);
+        },[h, i]);
 
         return {
             currentId: i>=0?h[i]:null,

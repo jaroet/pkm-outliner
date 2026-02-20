@@ -1,20 +1,41 @@
 
 (function(J) {
+    // Helper to get caret coordinates for autocomplete popup
+    const getCaretCoordinates = (element, position) => {
+        const div = document.createElement('div');
+        const style = window.getComputedStyle(element);
+        Array.from(style).forEach(prop => div.style.setProperty(prop, style.getPropertyValue(prop)));
+        div.style.position = 'absolute'; div.style.visibility = 'hidden'; div.style.whiteSpace = 'pre-wrap';
+        div.style.top = '0'; div.style.left = '0';
+        div.textContent = element.value.substring(0, position);
+        const span = document.createElement('span'); span.textContent = element.value.substring(position) || '.';
+        div.appendChild(span);
+        document.body.appendChild(div);
+        const coordinates = { top: span.offsetTop + parseInt(style.borderTopWidth), left: span.offsetLeft + parseInt(style.borderLeftWidth), height: parseInt(style.lineHeight) };
+        document.body.removeChild(div);
+        return coordinates;
+    };
+
     const { useState, useEffect, useRef, useCallback, useMemo } = React;
-    const { db, getTopology, createNote, updateNote, deleteNote, getFavorites, toggleFavorite, seedDatabase, getNote, getAllNotes, importNotes, getHomeNoteId, searchNotes, getFontSize, getNoteCount, getVaultList, getCurrentVaultName, switchVault, getSectionVisibility, findNoteByTitle, getNoteTitlesByPrefix, getActiveThemeId, getTheme, setActiveThemeId, getThemes, getAttachmentAliases } = J.Services.DB;
+    const { db, getTopology, createNote, updateNote, deleteNote, getFavorites, toggleFavorite, seedDatabase, getNote, getAllNotes, importNotes, getHomeNoteId, searchNotes, getFontSize, getNoteCount, getVaultList, getCurrentVaultName, switchVault, getSectionVisibility, findNoteByTitle, getNoteTitlesByPrefix, getActiveThemeId, getTheme, setActiveThemeId, getThemes, getAttachmentAliases, getSplitRatio, setSplitRatio: dbSetSplitRatio } = J.Services.DB;
     const { goToDate, goToToday, getDateSubtitle } = J.Services.Journal; 
     const { createRenderer, wikiLinkExtension, setAttachmentAliases } = J.Services.Markdown;
-    const { NoteCard, LinkerModal, Editor, SettingsModal, ImportModal, RenameModal, NoteSection, TopBar, StatusBar, Icons, AllNotesModal, ContentSearchModal, VaultChooser, APP_VERSION, Components: { SectionContainer } } = J;
-    const { useHistory } = J.Hooks;
+    const { NoteCard, LinkerModal, Editor, SettingsModal, ImportModal, RenameModal, NoteSection, TopBar, StatusBar, Icons, AllNotesModal, ContentSearchModal, VaultChooser, APP_VERSION } = J;
+    const { useHistory, useListNavigation, useClickOutside } = J.Hooks;
 
     marked.use({renderer:createRenderer({clickableCheckboxes:false}),extensions:[wikiLinkExtension]});
 
     J.App = () => {
         // --- State ---
         const {currentId,visit,replace,back,forward,canBack,canForward}=useHistory();
-        const [topo,setTopo]=useState({center:null,uppers:[],downers:[]}),[favs,setFavs]=useState([]),[dark,setDark]=useState(true),[fs,setFs]=useState(16),[vis,setVis]=useState({showFavorites:true,showContent:true}),[count,setCount]=useState(0),[themes,setThemes]=useState([]), [mentions, setMentions] = useState([]);
+        const [topo,setTopo]=useState({center:null,uppers:[],downers:[]}),[favs,setFavs]=useState([]),[dark,setDark]=useState(true),[fs,setFs]=useState(16),[vis,setVis]=useState({showFavorites:true,showContent:true}),[count,setCount]=useState(0),[themes,setThemes]=useState([]);
         const [contentSource, setContentSource] = useState(null);
+        const [isEditing, setIsEditing] = useState(false);
         const [editContent, setEditContent] = useState('');
+
+        // Autocomplete State
+        const [sug,setSug]=useState(false);const [sq,setSq]=useState('');const [sres,setSres]=useState([]);
+        const [cPos,setCPos]=useState({top:0,left:0});const [trigIdx,setTrigIdx]=useState(-1);
 
         // Resizable Pane State
         const [splitRatio, setSplitRatio] = useState(0.5);
@@ -51,7 +72,7 @@
         
         // Navigation State
         const [fSec,setFSec]=useState('center'),[fIdx,setFIdx]=useState(0),[sel,setSel]=useState(new Set());
-        const [secInd,setSecInd]=useState({up:0,down:0,favs:0,mentions:0});
+        const [secInd,setSecInd]=useState({up:0,down:0,favs:0});
         const scrollRef=useRef({});
         
         // Refs for Event Listeners
@@ -62,7 +83,7 @@
         const favsRef=useRef([]);
         const visRef=useRef({showFavorites:true,showContent:true});
         const secIndRef=useRef({up:0,down:0,favs:0});
-        const mentionsRef=useRef([]);
+        const isEditingRef=useRef(false);
 
         // UI State & Modals (removed `menu` and `setMenu`)
         const [cal,setCal]=useState(false),[calD,setCalD]=useState(new Set());
@@ -72,6 +93,7 @@
         const [ed,setEd]=useState(false),[edMode,setEdMode]=useState('view'),[lnk,setLnk]=useState(false),[lnkType,setLnkType]=useState('up'),[ren,setRen]=useState(false),[renN,setRenN]=useState(null),[sett,setSett]=useState(false),[imp,setImp]=useState(false),[impD,setImpD]=useState([]),[allNotes,setAllNotes]=useState(false);
         const searchInputRef=useRef(null);
         const textareaRef = useRef(null);
+        const previewRef = useRef(null);
 
         // --- Effects & Sync ---
         useEffect(()=>{
@@ -82,6 +104,7 @@
                 getFontSize().then(setFs);
                 getSectionVisibility().then(setVis);
                 getFavorites().then(setFavs);
+                getSplitRatio().then(setSplitRatio);
                 getThemes().then(setThemes);
                 getAttachmentAliases().then(a => {
                     setAttachmentAliases(a);
@@ -112,18 +135,6 @@
             }
         },[currentId]);
 
-        useEffect(() => {
-            if (!topo.center) {
-                setMentions([]);
-                return;
-            }
-            let isMounted = true;
-            db.notes.where('outgoingLinks').equals(topo.center.id).toArray().then(m => {
-                if (isMounted) setMentions(m);
-            });
-            return () => { isMounted = false; };
-        }, [topo.center]);
-
         // Sync Refs
         useEffect(()=>{selRef.current=sel},[sel]);
         useEffect(()=>{fSecRef.current=fSec},[fSec]);
@@ -132,15 +143,14 @@
         useEffect(()=>{favsRef.current=favs},[favs]);
         useEffect(()=>{visRef.current=vis},[vis]);
         useEffect(()=>{secIndRef.current=secInd},[secInd]);
-        useEffect(()=>{mentionsRef.current=mentions},[mentions]);
+        useEffect(()=>{isEditingRef.current=isEditing},[isEditing]);
 
-        const getSortedNotes = (sec, t=topo, f=favs, m=mentions) => {
+        const getSortedNotes = (sec, t=topo, f=favs) => {
             if(sec==='center')return t.center?[t.center]:[];
             let n=[]; 
             if(sec==='up')n=t.uppers;
             else if(sec==='down')n=t.downers;
             else if(sec==='favs')n=f;
-            else if(sec==='mentions')n=m;
             return n || [];
         };
 
@@ -148,7 +158,7 @@
             const section = fSec === 'content' ? (contentSource || 'center') : fSec;
             if (section === 'center') return topo.center;
             const index = fSec === 'content' ? (secInd[section] || 0) : fIdx;
-            return getSortedNotes(section, topo, favs, mentions)[index] || null;
+            return getSortedNotes(section, topo, favs)[index] || null;
         };
 
         const activeNote = getFocusedNote();
@@ -173,9 +183,75 @@
 
         useEffect(() => {
             if (fSec === 'content') {
-                setTimeout(() => textareaRef.current?.focus(), 50);
+                if (isEditing) {
+                    setTimeout(() => {
+                        if (textareaRef.current) {
+                            textareaRef.current.focus();
+                            textareaRef.current.setSelectionRange(textareaRef.current.value.length, textareaRef.current.value.length);
+                        }
+                    }, 50);
+                } else {
+                    setTimeout(() => previewRef.current?.focus(), 50);
+                }
             }
-        }, [fSec]);
+        }, [fSec, isEditing]);
+
+        // Persist split ratio
+        useEffect(() => {
+            const t = setTimeout(() => dbSetSplitRatio(splitRatio), 200);
+            return () => clearTimeout(t);
+        }, [splitRatio]);
+
+        // Autocomplete Logic
+        useEffect(()=>{
+            if(sug){
+                const t=setTimeout(async()=>{
+                    setSres(await searchNotes(sq)); 
+                },150);
+                return ()=>clearTimeout(t);
+            }
+        },[sq,sug]);
+
+        const handleContentChange = (e) => {
+            const v = e.target.value;
+            setEditContent(v);
+            const c = e.target.selectionEnd;
+            const lo = v.lastIndexOf('[[', c);
+            if (lo !== -1) {
+                const tb = v.slice(lo + 2, c);
+                if (tb.includes(']]') || tb.includes('\n')) {
+                    setSug(false);
+                } else {
+                    setTrigIdx(lo);
+                    setSq(tb);
+                    setSug(true);
+                    const coords = getCaretCoordinates(e.target, lo);
+                    setCPos({ top: coords.top - e.target.scrollTop, left: coords.left - e.target.scrollLeft });
+                }
+            } else {
+                setSug(false);
+            }
+        };
+
+        const insertLink = (title) => {
+            const b = editContent.slice(0, trigIdx);
+            const a = editContent.slice(textareaRef.current.selectionEnd);
+            const n = `${b}[[${title}]]${a}`;
+            setEditContent(n);
+            setSug(false);
+            setTimeout(() => {
+                if (textareaRef.current) {
+                    textareaRef.current.focus();
+                    const p = trigIdx + 2 + title.length + 2;
+                    textareaRef.current.setSelectionRange(p, p);
+                }
+            }, 50);
+        };
+
+        const { activeIndex: sugIdx, setActiveIndex: setSugIdx, listRef: sugListRef, handleKeyDown: handleAutocompleteKeyDown } = useListNavigation({
+            isOpen: sug, itemCount: sres.length, onEnter: (index) => { if (sres[index]) insertLink(sres[index].title); }, onEscape: () => setSug(false)
+        });
+        const autocompleteDropdownRef = useClickOutside(sug, useCallback(() => setSug(false), []));
 
         // Auto-save logic
         const saveContent = useCallback(async (content) => {
@@ -241,9 +317,9 @@
             if (tid) { await doL(tid); } 
             else if (t) {
                 for (let title of t.split(';').map(x => x.trim()).filter(Boolean)) {
-                    if (title.startsWith(', ')) {
+                    if (title.endsWith(' ,')) {
                         const sourceNote = await getNote(aid);
-                        if (sourceNote) title = `${sourceNote.title} ${title.substring(2)}`.trim();
+                        if (sourceNote) title = `${title.substring(0, title.length - 2).trim()} - ${sourceNote.title}`.trim();
                     }
                     let noteToLink = await findNoteByTitle(title);
                     if (!noteToLink) noteToLink = await createNote(title);
@@ -251,6 +327,19 @@
                 }
             }
             if(currentId) getTopology(currentId).then(setTopo); getNoteCount().then(setCount);
+        };
+
+        const handleAddNoteAfter = async (refNoteId) => {
+            if (!topo.center) return;
+            const center = topo.center;
+            const newNote = await createNote('New Note');
+            const currentLinks = center.linksTo || [];
+            const newLinks = [...currentLinks];
+            const idx = currentLinks.indexOf(refNoteId);
+            if (idx !== -1) newLinks.splice(idx + 1, 0, newNote.id); else newLinks.push(newNote.id);
+            await updateNote(center.id, { linksTo: newLinks });
+            await getTopology(currentId).then(setTopo); getNoteCount().then(setCount);
+            setRenN(newNote); setRen(true);
         };
 
         const changeRelationship = async (type) => {
@@ -292,7 +381,7 @@
 
         // --- KEYBOARD HANDLER ---
         const handleGlobalKeyDown = useCallback(async (e) => {
-            const selState=selRef.current, fSecState=fSecRef.current, fIdxState=fIdxRef.current, topoState=topoRef.current, favsState=favsRef.current, secIndState=secIndRef.current, mentionsState=mentionsRef.current;
+            const selState=selRef.current, fSecState=fSecRef.current, fIdxState=fIdxRef.current, topoState=topoRef.current, favsState=favsRef.current, secIndState=secIndRef.current, isEditingState=isEditingRef.current;
             if (ren||ed||lnk||sett||imp||cal||allNotes||vaultChooser||contentSearch) { if (e.key === 'Escape') { if(cal) setCal(false); if(allNotes) setAllNotes(false); if(vaultChooser) setVaultChooser(false); if(contentSearch) setContentSearch(false); } return; }
             if (sAct) {
                 if (e.key==='Escape') { setSAct(false); setFSec('center'); e.preventDefault(); return; }
@@ -308,24 +397,59 @@
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'j') { e.preventDefault(); nav(await goToToday()); return; }
             if ((e.ctrlKey || e.metaKey) && e.altKey && (e.code === 'KeyR' || e.key.toLowerCase() === 'r')) { e.preventDefault(); goToRandomNote(); return; }
             if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'f') { e.preventDefault(); setContentSearch(true); return; }
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'h') { e.preventDefault(); const h = await getHomeNoteId(); if(h) nav(h); return; }
             if (e.key === 'x' && fSecState !== 'content') {
-                e.preventDefault(); const note = (fSecState==='center'||fSecState==='content') ? topoState.center : getSortedNotes(fSecState, topoState, favsState, mentionsState)[fIdxState];
+                e.preventDefault(); const note = (fSecState==='center'||fSecState==='content') ? topoState.center : getSortedNotes(fSecState, topoState, favsState)[fIdxState];
                 if (note && note.id !== currentId) { togSel(note.id); const list = getSortedNotes(fSecState, topoState, favsState); if (fIdxState < list.length - 1) setFIdx(p=>p+1); } return;
-            }
-
-            if (e.key.length === 1 && e.key !== ' ' && !e.ctrlKey && !e.altKey && !e.metaKey && (fSecState === 'up' || fSecState === 'down')) {
-                const list = getSortedNotes(fSecState, topoState, favsState, mentionsState);
-                const char = e.key.toLowerCase();
-                let nextIdx = -1;
-                for(let i = fIdxState + 1; i < list.length; i++) { if(list[i].title.toLowerCase().startsWith(char)) { nextIdx = i; break; } }
-                if(nextIdx === -1) { for(let i = 0; i <= fIdxState; i++) { if(list[i].title.toLowerCase().startsWith(char)) { nextIdx = i; break; } } }
-                if(nextIdx !== -1) { e.preventDefault(); setFIdx(nextIdx); return; }
             }
 
             if ((e.ctrlKey || e.metaKey) && e.key === 'Backspace' && fSecState !== 'content') {
                 e.preventDefault(); const targets = selState.size > 0 ? Array.from(selState) : (getFocusedNote() ? [getFocusedNote().id] : []);
                 if (targets.length && confirm(`Delete ${targets.length}?`)) { for (const id of targets) await deleteNote(id); if (targets.includes(currentId)) nav(await getHomeNoteId() || (await getAllNotes())[0].id); else { getTopology(currentId).then(setTopo); getNoteCount().then(setCount); } setSel(new Set()); } return;
             }
+            
+            // Reorder Child Notes (Ctrl+Shift+Up/Down)
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && fSecState === 'down') {
+                if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (fIdxState > 0 && topoState.center) {
+                        const links = [...topoState.center.linksTo];
+                        const currentNote = topoState.downers[fIdxState];
+                        const prevNote = topoState.downers[fIdxState - 1];
+                        if (currentNote && prevNote) {
+                            const cIdx = links.indexOf(currentNote.id);
+                            const pIdx = links.indexOf(prevNote.id);
+                            if (cIdx !== -1 && pIdx !== -1) {
+                                [links[cIdx], links[pIdx]] = [links[pIdx], links[cIdx]];
+                                await updateNote(topoState.center.id, { linksTo: links });
+                                await getTopology(currentId).then(setTopo);
+                                setFIdx(fIdxState - 1);
+                            }
+                        }
+                    }
+                    return;
+                }
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (fIdxState < topoState.downers.length - 1 && topoState.center) {
+                        const links = [...topoState.center.linksTo];
+                        const currentNote = topoState.downers[fIdxState];
+                        const nextNote = topoState.downers[fIdxState + 1];
+                        if (currentNote && nextNote) {
+                            const cIdx = links.indexOf(currentNote.id);
+                            const nIdx = links.indexOf(nextNote.id);
+                            if (cIdx !== -1 && nIdx !== -1) {
+                                [links[cIdx], links[nIdx]] = [links[nIdx], links[cIdx]];
+                                await updateNote(topoState.center.id, { linksTo: links });
+                                await getTopology(currentId).then(setTopo);
+                                setFIdx(fIdxState + 1);
+                            }
+                        }
+                    }
+                    return;
+                }
+            }
+
             if (e.key === 'Backspace' && fSecState !== 'content') { e.preventDefault(); changeRelationship('unlink'); return; }
             if ((e.ctrlKey || e.metaKey) && fSecState !== 'content') {
                 if (e.key === 'ArrowUp') { e.preventDefault(); if(selState.size) changeRelationship('up'); else { setLnkType('up'); setLnk(true); } return; }
@@ -334,40 +458,27 @@
             if (e.key === 'F2') { e.preventDefault(); const n = getFocusedNote(); if(n) { setRenN(n); setRen(true); } return; }
             if (e.key === ' ' && fSecState !== 'content') { e.preventDefault(); const n = getFocusedNote(); if(n && n.id !== currentId) nav(n.id); return; }
             
-            if (e.key === 'Enter' && fSecState !== 'content') {
+            if (e.shiftKey && e.key === 'Enter') {
                 e.preventDefault();
-                
-                const list = getSortedNotes(fSecState, topoState, favsState, mentionsState);
-                const refNote = list[fIdxState];
-
-                if (fSecState !== 'up' && fSecState !== 'down') return;
-                if (!refNote) return;
-
-                const newNote = await createNote('New Note');
-
-                if (fSecState === 'down') {
-                    const center = topoState.center;
-                    const currentLinks = center.linksTo || [];
-                    const newLinks = [...currentLinks];
-                    const idx = currentLinks.indexOf(refNote.id);
-                    if (idx !== -1) newLinks.splice(idx + 1, 0, newNote.id); else newLinks.push(newNote.id);
-                    await updateNote(center.id, { linksTo: newLinks });
-                } else if (fSecState === 'up') {
-                    await updateNote(newNote.id, { linksTo: [currentId] });
+                if (fSecState !== 'content') {
+                    setContentSource(fSecState);
+                    setFSec('content');
+                    setIsEditing(true);
+                } else {
+                    setIsEditing(p => !p);
                 }
-
-                await getTopology(currentId).then(setTopo); getNoteCount().then(setCount);
-                setRenN(newNote); setRen(true); return;
+                return;
             }
-            
+
             if (e.key === 'Tab') {
                 e.preventDefault();
                 if (fSecState === 'content') { 
                     setFSec(contentSource || 'center'); 
+                    setIsEditing(false);
                 } else { 
                     setContentSource(fSecState);
                     setFSec('content'); 
-                    setTimeout(() => textareaRef.current?.focus(), 50);
+                    setIsEditing(false);
                 }
                 return;
             }
@@ -381,15 +492,15 @@
             }
             if (e.key === 'ArrowDown' && fSecState !== 'content') {
                 e.preventDefault();
-                const list = getSortedNotes(fSecState, topoState, favsState, mentionsState);
+                const list = getSortedNotes(fSecState, topoState, favsState);
                 if(fSecState==='center'){ if(topoState.downers.length){ setFSec('down'); setFIdx(Math.min(secIndState.down, topoState.downers.length-1)); } }
                 else if(fSecState==='up'){ if(fIdxState===list.length-1) setFSec('center'); else setFIdx(p=>p+1); }
                 else if(fSecState==='down'){ setFIdx(p=>Math.min(list.length-1,p+1)); }
             }
             if (e.key === 'ArrowLeft' && fSecState !== 'content') {
                 e.preventDefault();
-                const sortedUppers = getSortedNotes('up', topoState, favsState, mentionsState);
-                if (['down', 'favs', 'mentions', 'right'].includes(fSecState)) {
+                const sortedUppers = getSortedNotes('up', topoState, favsState);
+                if (['down', 'favs'].includes(fSecState)) {
                     setFSec('center');
                 } else if (fSecState === 'center') {
                     if (sortedUppers.length > 0) {
@@ -405,12 +516,12 @@
                 if (['up', 'favs'].includes(fSecState)) {
                     setFSec('center');
                 } else if (fSecState === 'center') {
-                    const sortedDowners = getSortedNotes('down', topoState, favsState, mentionsState);
+                    const sortedDowners = getSortedNotes('down', topoState, favsState);
                     if (sortedDowners.length > 0) {
                         nav(sortedDowners[0].id);
                     }
-                } else if (['down', 'right', 'mentions'].includes(fSecState)) {
-                    const note = getSortedNotes(fSecState, topoState, favsState, mentionsState)[fIdxState];
+                } else if (fSecState === 'down') {
+                    const note = getSortedNotes(fSecState, topoState, favsState)[fIdxState];
                     if (note) nav(note.id);
                 }
             }
@@ -469,6 +580,7 @@
                                         onClick=${()=>{}} 
                                         className="font-bold w-full text-primary"
                                         id="note-center-0"
+                                        subtitle=${subT}
                                     />
                                     <div className="flex gap-1 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-1/2 -translate-y-1/2">
                                         ${topo.center.isFavorite&&html`<${Icons.Star} width="14" height="14" fill="currentColor" />`}
@@ -484,6 +596,7 @@
                                     containerClasses="flex flex-col" 
                                     itemClasses="w-full" 
                                     containerId="container-down" 
+                                    onAddAfter=${handleAddNoteAfter}
                                     ...${sp} 
                                 />
                             </div>
@@ -525,21 +638,41 @@
 
                     <div 
                         style=${{ borderColor: 'color-mix(in srgb, var(--primary) 20%, transparent)' }}
-                        className="flex-1 h-full overflow-y-auto custom-scrollbar bg-background p-8 border-l min-w-0"
+                        className="flex-1 h-full bg-background border-l min-w-0 relative"
                         onClick=${() => setFSec('content')}
                     >
-                            ${fSec === 'content' && activeNote ? html`
+                            ${fSec === 'content' && isEditing && activeNote ? html`
                                 <textarea
                                     ref=${textareaRef}
-                                    className="w-full h-full bg-transparent resize-none outline-none font-mono custom-scrollbar p-2"
+                                    className="w-full h-full bg-transparent resize-none outline-none font-mono custom-scrollbar p-8"
                                     value=${editContent}
-                                    onChange=${(e) => setEditContent(e.target.value)}
+                                    onChange=${handleContentChange}
+                                    onKeyDown=${(e) => {
+                                        if (sug) {
+                                            if (['ArrowUp', 'ArrowDown', 'Enter', 'Tab', 'Escape'].includes(e.key)) {
+                                                e.stopPropagation();
+                                                handleAutocompleteKeyDown(e);
+                                            }
+                                        }
+                                    }}
                                     placeholder="Start typing..."
                                 ></textarea>
-                            ` : activeNote && activeNote.content ? html`
+                                ${sug && html`
+                                    <div ref=${(el) => { autocompleteDropdownRef.current = el; sugListRef.current = el; }} className="absolute z-50 w-64 bg-card border border-gray-200 dark:border-gray-700 shadow-xl rounded-md max-h-60 overflow-y-auto custom-scrollbar" style=${{top:cPos.top+30,left:cPos.left+24}}>
+                                        ${sres.length===0?html`<div className="p-2 text-xs text-gray-500 italic">No matching notes</div>`
+                                        :sres.map((s,i)=>html`
+                                            <div key=${s.id} onClick=${()=>insertLink(s.title)} onMouseEnter=${() => setSugIdx(i)} className=${`px-3 py-2 text-sm cursor-pointer ${i===sugIdx?'bg-primary text-primary-foreground':'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
+                                                ${s.title}
+                                            </div>
+                                        `)}
+                                    </div>
+                                `}
+                            ` : activeNote ? html`
                                 <div 
-                                    className=${`prose dark:prose-invert max-w-none compact-markdown transition-all duration-200 ${fSec==='content' ? 'ring-2 ring-primary/10 rounded-lg p-2' : ''}`} 
-                                    dangerouslySetInnerHTML=${{ __html: prevH }}
+                                    ref=${previewRef}
+                                    tabIndex=${0}
+                                    className=${`w-full h-full overflow-y-auto custom-scrollbar p-8 prose dark:prose-invert max-w-none compact-markdown transition-all duration-200 outline-none ${fSec==='content' ? 'ring-2 ring-primary/10 rounded-lg' : ''}`} 
+                                    dangerouslySetInnerHTML=${{ __html: prevH || '<span class="text-gray-400 italic">No content</span>' }}
                                     onClick=${async (e) => {
                                         if (e.target.classList.contains('internal-link') && e.target.dataset.title) {
                                             e.preventDefault();

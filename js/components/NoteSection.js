@@ -2,8 +2,9 @@
 (function(J) {
     const { useLayoutEffect } = React;
 
-    J.NoteSection = ({notes,section,containerClasses,itemClasses,containerId,fontSize,focusedSection,focusedIndex,selectedNoteIds,onNoteClick,scrollPositionsRef}) => {
+    J.NoteSection = ({notes,section,containerClasses,itemClasses,containerId,fontSize,focusedSection,focusedIndex,selectedNoteIds,onNoteClick,scrollPositionsRef,onAddAfter}) => {
         const { NoteCard } = J;
+        const { getDateSubtitle } = J.Services.Journal;
         
         // Restore scroll position when list content changes
         useLayoutEffect(()=>{
@@ -27,6 +28,8 @@
                         isSelected=${selectedNoteIds.has(n.id)} 
                         onClick=${e=>onNoteClick(n.id,e.ctrlKey)} 
                         className=${itemClasses} 
+                        onAddAfter=${onAddAfter}
+                        subtitle=${getDateSubtitle(n.title)}
                     />
                 `)}
             </div>

@@ -29,8 +29,8 @@
         };
 
         let createTitle = q;
-        if (q.startsWith(', ') && sourceTitle) {
-            createTitle = `${sourceTitle} ${q.substring(2)}`;
+        if (q.endsWith(' ,') && sourceTitle) {
+            createTitle = `${q.substring(0, q.length - 2).trim()} - ${sourceTitle}`;
         }
 
         return html`
