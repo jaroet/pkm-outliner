@@ -4,7 +4,7 @@
     const { db, getTopology, createNote, updateNote, deleteNote, getFavorites, toggleFavorite, seedDatabase, getNote, getAllNotes, importNotes, getHomeNoteId, searchNotes, getFontSize, getNoteCount, getVaultList, getCurrentVaultName, switchVault, getSectionVisibility, findNoteByTitle, getNoteTitlesByPrefix, getActiveThemeId, getTheme, setActiveThemeId, getThemes, getAttachmentAliases } = J.Services.DB;
     const { goToDate, goToToday, getDateSubtitle } = J.Services.Journal; 
     const { createRenderer, wikiLinkExtension, setAttachmentAliases } = J.Services.Markdown;
-    const { NoteCard, LinkerModal, Editor, SettingsModal, ImportModal, RenameModal, NoteSection, TopBar, StatusBar, Icons, AllNotesModal, ContentSearchModal, VaultChooser, APP_VERSION, Components: { SectionContainer } } = J;
+    const { NoteCard, LinkerModal, Editor, SettingsModal, ImportModal, RenameModal, NoteSection, TopBar, StatusBar, Icons, AllNotesModal, ContentSearchModal, VaultChooser, APP_VERSION } = J;
     const { useHistory } = J.Hooks;
 
     marked.use({renderer:createRenderer({clickableCheckboxes:false}),extensions:[wikiLinkExtension]});
@@ -12,7 +12,7 @@
     J.App = () => {
         // --- State ---
         const {currentId,visit,replace,back,forward,canBack,canForward}=useHistory();
-        const [topo,setTopo]=useState({center:null,uppers:[],downers:[]}),[favs,setFavs]=useState([]),[dark,setDark]=useState(true),[fs,setFs]=useState(16),[vis,setVis]=useState({showFavorites:true,showContent:true}),[count,setCount]=useState(0),[themes,setThemes]=useState([]), [mentions, setMentions] = useState([]);
+        const [topo,setTopo]=useState({center:null,uppers:[],downers:[]}),[favs,setFavs]=useState([]),[dark,setDark]=useState(true),[fs,setFs]=useState(16),[vis,setVis]=useState({showFavorites:true,showContent:true}),[count,setCount]=useState(0),[themes,setThemes]=useState([]);
         const [contentSource, setContentSource] = useState(null);
         const [isEditing, setIsEditing] = useState(false);
         const [editContent, setEditContent] = useState('');
@@ -52,7 +52,7 @@
         
         // Navigation State
         const [fSec,setFSec]=useState('center'),[fIdx,setFIdx]=useState(0),[sel,setSel]=useState(new Set());
-        const [secInd,setSecInd]=useState({up:0,down:0,favs:0,mentions:0});
+        const [secInd,setSecInd]=useState({up:0,down:0,favs:0});
         const scrollRef=useRef({});
         
         // Refs for Event Listeners
@@ -63,7 +63,6 @@
         const favsRef=useRef([]);
         const visRef=useRef({showFavorites:true,showContent:true});
         const secIndRef=useRef({up:0,down:0,favs:0});
-        const mentionsRef=useRef([]);
         const isEditingRef=useRef(false);
 
         // UI State & Modals (removed `menu` and `setMenu`)
@@ -115,18 +114,6 @@
             }
         },[currentId]);
 
-        useEffect(() => {
-            if (!topo.center) {
-                setMentions([]);
-                return;
-            }
-            let isMounted = true;
-            db.notes.where('outgoingLinks').equals(topo.center.id).toArray().then(m => {
-                if (isMounted) setMentions(m);
-            });
-            return () => { isMounted = false; };
-        }, [topo.center]);
-
         // Sync Refs
         useEffect(()=>{selRef.current=sel},[sel]);
         useEffect(()=>{fSecRef.current=fSec},[fSec]);
@@ -135,16 +122,14 @@
         useEffect(()=>{favsRef.current=favs},[favs]);
         useEffect(()=>{visRef.current=vis},[vis]);
         useEffect(()=>{secIndRef.current=secInd},[secInd]);
-        useEffect(()=>{mentionsRef.current=mentions},[mentions]);
         useEffect(()=>{isEditingRef.current=isEditing},[isEditing]);
 
-        const getSortedNotes = (sec, t=topo, f=favs, m=mentions) => {
+        const getSortedNotes = (sec, t=topo, f=favs) => {
             if(sec==='center')return t.center?[t.center]:[];
             let n=[]; 
             if(sec==='up')n=t.uppers;
             else if(sec==='down')n=t.downers;
             else if(sec==='favs')n=f;
-            else if(sec==='mentions')n=m;
             return n || [];
         };
 
@@ -152,7 +137,7 @@
             const section = fSec === 'content' ? (contentSource || 'center') : fSec;
             if (section === 'center') return topo.center;
             const index = fSec === 'content' ? (secInd[section] || 0) : fIdx;
-            return getSortedNotes(section, topo, favs, mentions)[index] || null;
+            return getSortedNotes(section, topo, favs)[index] || null;
         };
 
         const activeNote = getFocusedNote();
@@ -318,7 +303,7 @@
 
         // --- KEYBOARD HANDLER ---
         const handleGlobalKeyDown = useCallback(async (e) => {
-            const selState=selRef.current, fSecState=fSecRef.current, fIdxState=fIdxRef.current, topoState=topoRef.current, favsState=favsRef.current, secIndState=secIndRef.current, mentionsState=mentionsRef.current, isEditingState=isEditingRef.current;
+            const selState=selRef.current, fSecState=fSecRef.current, fIdxState=fIdxRef.current, topoState=topoRef.current, favsState=favsRef.current, secIndState=secIndRef.current, isEditingState=isEditingRef.current;
             if (ren||ed||lnk||sett||imp||cal||allNotes||vaultChooser||contentSearch) { if (e.key === 'Escape') { if(cal) setCal(false); if(allNotes) setAllNotes(false); if(vaultChooser) setVaultChooser(false); if(contentSearch) setContentSearch(false); } return; }
             if (sAct) {
                 if (e.key==='Escape') { setSAct(false); setFSec('center'); e.preventDefault(); return; }
@@ -335,12 +320,12 @@
             if ((e.ctrlKey || e.metaKey) && e.altKey && (e.code === 'KeyR' || e.key.toLowerCase() === 'r')) { e.preventDefault(); goToRandomNote(); return; }
             if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'f') { e.preventDefault(); setContentSearch(true); return; }
             if (e.key === 'x' && fSecState !== 'content') {
-                e.preventDefault(); const note = (fSecState==='center'||fSecState==='content') ? topoState.center : getSortedNotes(fSecState, topoState, favsState, mentionsState)[fIdxState];
+                e.preventDefault(); const note = (fSecState==='center'||fSecState==='content') ? topoState.center : getSortedNotes(fSecState, topoState, favsState)[fIdxState];
                 if (note && note.id !== currentId) { togSel(note.id); const list = getSortedNotes(fSecState, topoState, favsState); if (fIdxState < list.length - 1) setFIdx(p=>p+1); } return;
             }
 
             if (e.key.length === 1 && e.key !== ' ' && !e.ctrlKey && !e.altKey && !e.metaKey && (fSecState === 'up' || fSecState === 'down')) {
-                const list = getSortedNotes(fSecState, topoState, favsState, mentionsState);
+                const list = getSortedNotes(fSecState, topoState, favsState);
                 const char = e.key.toLowerCase();
                 let nextIdx = -1;
                 for(let i = fIdxState + 1; i < list.length; i++) { if(list[i].title.toLowerCase().startsWith(char)) { nextIdx = i; break; } }
@@ -352,13 +337,6 @@
                 e.preventDefault(); const targets = selState.size > 0 ? Array.from(selState) : (getFocusedNote() ? [getFocusedNote().id] : []);
                 if (targets.length && confirm(`Delete ${targets.length}?`)) { for (const id of targets) await deleteNote(id); if (targets.includes(currentId)) nav(await getHomeNoteId() || (await getAllNotes())[0].id); else { getTopology(currentId).then(setTopo); getNoteCount().then(setCount); } setSel(new Set()); } return;
             }
-            if (e.key === 'Backspace' && fSecState !== 'content') { e.preventDefault(); changeRelationship('unlink'); return; }
-            if ((e.ctrlKey || e.metaKey) && fSecState !== 'content') {
-                if (e.key === 'ArrowUp') { e.preventDefault(); if(selState.size) changeRelationship('up'); else { setLnkType('up'); setLnk(true); } return; }
-                if (e.key === 'ArrowDown') { e.preventDefault(); if(selState.size) changeRelationship('down'); else { setLnkType('down'); setLnk(true); } return; }
-            }
-            if (e.key === 'F2') { e.preventDefault(); const n = getFocusedNote(); if(n) { setRenN(n); setRen(true); } return; }
-            if (e.key === ' ' && fSecState !== 'content') { e.preventDefault(); const n = getFocusedNote(); if(n && n.id !== currentId) nav(n.id); return; }
             
             // Reorder Child Notes (Ctrl+Shift+Up/Down)
             if ((e.ctrlKey || e.metaKey) && e.shiftKey && fSecState === 'down') {
@@ -402,6 +380,14 @@
                 }
             }
 
+            if (e.key === 'Backspace' && fSecState !== 'content') { e.preventDefault(); changeRelationship('unlink'); return; }
+            if ((e.ctrlKey || e.metaKey) && fSecState !== 'content') {
+                if (e.key === 'ArrowUp') { e.preventDefault(); if(selState.size) changeRelationship('up'); else { setLnkType('up'); setLnk(true); } return; }
+                if (e.key === 'ArrowDown') { e.preventDefault(); if(selState.size) changeRelationship('down'); else { setLnkType('down'); setLnk(true); } return; }
+            }
+            if (e.key === 'F2') { e.preventDefault(); const n = getFocusedNote(); if(n) { setRenN(n); setRen(true); } return; }
+            if (e.key === ' ' && fSecState !== 'content') { e.preventDefault(); const n = getFocusedNote(); if(n && n.id !== currentId) nav(n.id); return; }
+            
             if (e.shiftKey && e.key === 'Enter') {
                 e.preventDefault();
                 if (fSecState !== 'content') {
@@ -436,15 +422,15 @@
             }
             if (e.key === 'ArrowDown' && fSecState !== 'content') {
                 e.preventDefault();
-                const list = getSortedNotes(fSecState, topoState, favsState, mentionsState);
+                const list = getSortedNotes(fSecState, topoState, favsState);
                 if(fSecState==='center'){ if(topoState.downers.length){ setFSec('down'); setFIdx(Math.min(secIndState.down, topoState.downers.length-1)); } }
                 else if(fSecState==='up'){ if(fIdxState===list.length-1) setFSec('center'); else setFIdx(p=>p+1); }
                 else if(fSecState==='down'){ setFIdx(p=>Math.min(list.length-1,p+1)); }
             }
             if (e.key === 'ArrowLeft' && fSecState !== 'content') {
                 e.preventDefault();
-                const sortedUppers = getSortedNotes('up', topoState, favsState, mentionsState);
-                if (['down', 'favs', 'mentions', 'right'].includes(fSecState)) {
+                const sortedUppers = getSortedNotes('up', topoState, favsState);
+                if (['down', 'favs'].includes(fSecState)) {
                     setFSec('center');
                 } else if (fSecState === 'center') {
                     if (sortedUppers.length > 0) {
@@ -460,12 +446,12 @@
                 if (['up', 'favs'].includes(fSecState)) {
                     setFSec('center');
                 } else if (fSecState === 'center') {
-                    const sortedDowners = getSortedNotes('down', topoState, favsState, mentionsState);
+                    const sortedDowners = getSortedNotes('down', topoState, favsState);
                     if (sortedDowners.length > 0) {
                         nav(sortedDowners[0].id);
                     }
-                } else if (['down', 'right', 'mentions'].includes(fSecState)) {
-                    const note = getSortedNotes(fSecState, topoState, favsState, mentionsState)[fIdxState];
+                } else if (fSecState === 'down') {
+                    const note = getSortedNotes(fSecState, topoState, favsState)[fIdxState];
                     if (note) nav(note.id);
                 }
             }
