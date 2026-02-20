@@ -20,7 +20,7 @@
         const [curThemeId, setCurThemeId] = useState('');
         const [editingTheme, setEditingTheme] = useState(null);
         const [highlightedVar, setHighlightedVar] = useState(null);
-        const [vis, setVis] = useState({showFavorites: true, showContent: true});
+        const [vis, setVis] = useState({showFavorites: true});
         const [newV, setNewV] = useState('');
         const [confDel, setConfDel] = useState(false);
         const [confReset, setConfReset] = useState(false);
@@ -244,13 +244,7 @@
                                                 checked=${vis.showFavorites} onChange=${e => handleVisChange('showFavorites', e.target.checked)} />
                                             <span className="text-sm font-medium">Show Favorites Section</span>
                                         </label>
-                                        <label className="flex items-center gap-3 cursor-pointer">
-                                            <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
-                                                checked=${vis.showContent} onChange=${e => handleVisChange('showContent', e.target.checked)} />
-                                            <span className="text-sm font-medium">Show Content Section</span>
-                                        </label>
                                     </div>
-                                    <p className="text-xs text-gray-400 mt-2">When hidden, the section above will expand to fill the vertical space.</p>
                                 </div>
 
                                 <div>

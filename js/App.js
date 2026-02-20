@@ -28,7 +28,7 @@
     J.App = () => {
         // --- State ---
         const {currentId,visit,replace,back,forward,canBack,canForward}=useHistory();
-        const [topo,setTopo]=useState({center:null,uppers:[],downers:[]}),[favs,setFavs]=useState([]),[dark,setDark]=useState(true),[fs,setFs]=useState(16),[vis,setVis]=useState({showFavorites:true,showContent:true}),[count,setCount]=useState(0),[themes,setThemes]=useState([]);
+        const [topo,setTopo]=useState({center:null,uppers:[],downers:[]}),[favs,setFavs]=useState([]),[dark,setDark]=useState(true),[fs,setFs]=useState(16),[vis,setVis]=useState({showFavorites:true}),[count,setCount]=useState(0),[themes,setThemes]=useState([]);
         const [contentSource, setContentSource] = useState(null);
         const [isEditing, setIsEditing] = useState(false);
         const [editContent, setEditContent] = useState('');
@@ -81,7 +81,7 @@
         const fIdxRef=useRef(0);
         const topoRef=useRef({center:null,uppers:[],downers:[]});
         const favsRef=useRef([]);
-        const visRef=useRef({showFavorites:true,showContent:true});
+        const visRef=useRef({showFavorites:true});
         const secIndRef=useRef({up:0,down:0,favs:0});
         const isEditingRef=useRef(false);
 
