@@ -97,8 +97,17 @@
                             ${sortLabels[currentSort] || 'Sort'}
                         </button>
                         ${sortDrop && html`
-                            <div ref=${sortDropdownRef} className="absolute top-full left-0 mt-1 w-32 bg-card border border-gray-200 dark:border-gray-700 shadow-xl rounded-md z-50 py-1">
-                                ${Object.entries(sortLabels).map(([k, v]) => html`<div key=${k} onClick=${() => { onSortChange(k); setSortDrop(false); }} className=${`px-4 py-2 text-xs cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 ${currentSort === k ? 'font-bold text-primary' : ''}`}>${v}</div>`)}
+                            <div ref=${sortDropdownRef} className="absolute top-full left-0 mt-1 w-36 bg-card border border-gray-200 dark:border-gray-700 shadow-xl rounded-md z-50 py-1">
+                                ${Object.entries(sortLabels).map(([k, v]) => html`
+                                    <div 
+                                        key=${k} 
+                                        onClick=${() => { onSortChange(k); setSortDrop(false); }} 
+                                        className=${`flex items-center justify-between px-3 py-2 text-xs cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 ${currentSort === k ? 'font-bold text-primary' : ''}`}
+                                    >
+                                        <span>${v}</span>
+                                        ${currentSort === k && html`<${Icons.Check} width="16" height="16" />`}
+                                    </div>
+                                `)}
                             </div>
                         `}
                     </div>

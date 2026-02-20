@@ -417,47 +417,25 @@
             
             // Reorder Child Notes (Ctrl+Shift+Up/Down)
             if ((e.ctrlKey || e.metaKey) && e.shiftKey && fSecState === 'down') {
-                const currentSort = topoState.center?.childSort || (
-                    (/^(Journal Hub|\d{4}(-\d{2})?(-\d{2})?)$/.test(topoState.center?.title) ? 'title_desc' : 'title_asc')
-                );
-                
-                if (currentSort !== 'manual') return;
-
                 if (e.key === 'ArrowUp') {
                     e.preventDefault();
                     if (fIdxState > 0 && topoState.center) {
-                        const links = [...topoState.center.linksTo];
-                        const currentNote = topoState.downers[fIdxState];
-                        const prevNote = topoState.downers[fIdxState - 1];
-                        if (currentNote && prevNote) {
-                            const cIdx = links.indexOf(currentNote.id);
-                            const pIdx = links.indexOf(prevNote.id);
-                            if (cIdx !== -1 && pIdx !== -1) {
-                                [links[cIdx], links[pIdx]] = [links[pIdx], links[cIdx]];
-                                await updateNote(topoState.center.id, { linksTo: links });
-                                await getTopology(currentId).then(setTopo);
-                                setFIdx(fIdxState - 1);
-                            }
-                        }
+                        const currentVisualIds = topoState.downers.map(n => n.id);
+                        [currentVisualIds[fIdxState], currentVisualIds[fIdxState - 1]] = [currentVisualIds[fIdxState - 1], currentVisualIds[fIdxState]];
+                        await updateNote(topoState.center.id, { linksTo: currentVisualIds, childSort: 'manual' });
+                        await getTopology(currentId).then(setTopo);
+                        setFIdx(fIdxState - 1);
                     }
                     return;
                 }
                 if (e.key === 'ArrowDown') {
                     e.preventDefault();
                     if (fIdxState < topoState.downers.length - 1 && topoState.center) {
-                        const links = [...topoState.center.linksTo];
-                        const currentNote = topoState.downers[fIdxState];
-                        const nextNote = topoState.downers[fIdxState + 1];
-                        if (currentNote && nextNote) {
-                            const cIdx = links.indexOf(currentNote.id);
-                            const nIdx = links.indexOf(nextNote.id);
-                            if (cIdx !== -1 && nIdx !== -1) {
-                                [links[cIdx], links[nIdx]] = [links[nIdx], links[cIdx]];
-                                await updateNote(topoState.center.id, { linksTo: links });
-                                await getTopology(currentId).then(setTopo);
-                                setFIdx(fIdxState + 1);
-                            }
-                        }
+                        const currentVisualIds = topoState.downers.map(n => n.id);
+                        [currentVisualIds[fIdxState], currentVisualIds[fIdxState + 1]] = [currentVisualIds[fIdxState + 1], currentVisualIds[fIdxState]];
+                        await updateNote(topoState.center.id, { linksTo: currentVisualIds, childSort: 'manual' });
+                        await getTopology(currentId).then(setTopo);
+                        setFIdx(fIdxState + 1);
                     }
                     return;
                 }
