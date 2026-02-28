@@ -1,13 +1,14 @@
 # Changelog
 
-## [0.7.0] - Current Release
+## [0.7.1] - Current Release
 ### Added
-- **Documentation**: Added comprehensive `documentation.md` covering core concepts and hotkeys.
-- **Changelog**: Added `changelog.md` to track project history.
-- **Version Bump**: Updated application version to 0.7.0 across all files.
+- **Mentions**: Added a "Mentions" button in the top bar to show all notes linking to the current note.
+- **Context Highlighting**: Navigating from the Mentions list highlights the reference in the target note.
+- **Content Search**: Added a clear button to the search input field.
 
 ### Maintenance
 - Updated dependency references to ensure cache consistency.
+- **Code Quality**: Extensive refactoring of variable names and state management for better readability and maintenance.
 
 ---
 
