@@ -382,6 +382,10 @@
         return results.sort((a, b) => b.count - a.count);
     };
 
+    const getMentions = async (id) => {
+        return await db.notes.where('outgoingLinks').equals(id).toArray();
+    };
+
     const importNotes=async(notes,mode)=>{
         const processNote = (n, idMap, titleMap) => {
             const newId = idMap.get(n.id) || n.id;
@@ -437,6 +441,6 @@
         getTopology, getFavorites, toggleFavorite, getHomeNoteId, setHomeNoteId, getFontSize, setFontSize, getSectionVisibility,
         setSectionVisibility, getSplitRatio, setSplitRatio, getThemes, getTheme, saveTheme, deleteTheme, getActiveThemeId, setActiveThemeId,
         getAttachmentAliases, saveAttachmentAliases,
-        searchNotes, getAllNotes, getAllNotesSortedBy, importNotes, searchContent
+        searchNotes, getAllNotes, getAllNotesSortedBy, importNotes, searchContent, getMentions
     };
 })(window.Jaroet);

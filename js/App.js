@@ -20,7 +20,7 @@
     const { db, getTopology, createNote, updateNote, deleteNote, getFavorites, toggleFavorite, seedDatabase, getNote, getAllNotes, importNotes, getHomeNoteId, searchNotes, getFontSize, getNoteCount, getVaultList, getCurrentVaultName, switchVault, getSectionVisibility, findNoteByTitle, getNoteTitlesByPrefix, getActiveThemeId, getTheme, setActiveThemeId, getThemes, getAttachmentAliases, getSplitRatio, setSplitRatio: dbSetSplitRatio } = J.Services.DB;
     const { goToDate, goToToday, getDateSubtitle } = J.Services.Journal; 
     const { createRenderer, wikiLinkExtension, setAttachmentAliases } = J.Services.Markdown;
-    const { NoteCard, LinkerModal, Editor, SettingsModal, ImportModal, RenameModal, NoteSection, TopBar, StatusBar, Icons, AllNotesModal, ContentSearchModal, VaultChooser, APP_VERSION } = J;
+    const { NoteCard, LinkerModal, Editor, SettingsModal, ImportModal, RenameModal, NoteSection, TopBar, StatusBar, Icons, AllNotesModal, ContentSearchModal, VaultChooser, MentionsModal, APP_VERSION } = J;
     const { useHistory, useListNavigation, useClickOutside } = J.Hooks;
 
     marked.use({renderer:createRenderer({clickableCheckboxes:false}),extensions:[wikiLinkExtension]});
@@ -107,6 +107,7 @@
         const [isImportModalOpen, setIsImportModalOpen] = useState(false);
         const [importData, setImportData] = useState([]);
         const [isAllNotesModalOpen, setIsAllNotesModalOpen] = useState(false);
+        const [isMentionsModalOpen, setIsMentionsModalOpen] = useState(false);
         const searchInputRef=useRef(null);
         const textareaRef = useRef(null);
         const previewRef = useRef(null);
@@ -405,7 +406,7 @@
         // --- KEYBOARD HANDLER ---
         const handleGlobalKeyDown = useCallback(async (e) => {
             const selState=selRef.current, fSecState=fSecRef.current, fIdxState=fIdxRef.current, topoState=topoRef.current, favsState=favsRef.current, secIndState=secIndRef.current, isEditingState=isEditingRef.current;
-            if (isRenameModalOpen||isEditorOpen||isLinkerModalOpen||isSettingsOpen||isImportModalOpen||isCalendarOpen||isAllNotesModalOpen||vaultChooser||contentSearch) { if (e.key === 'Escape') { if(isCalendarOpen) setIsCalendarOpen(false); if(isAllNotesModalOpen) setIsAllNotesModalOpen(false); if(vaultChooser) setVaultChooser(false); if(contentSearch) setContentSearch(false); } return; }
+            if (isRenameModalOpen||isEditorOpen||isLinkerModalOpen||isSettingsOpen||isImportModalOpen||isCalendarOpen||isAllNotesModalOpen||isMentionsModalOpen||vaultChooser||contentSearch) { if (e.key === 'Escape') { if(isCalendarOpen) setIsCalendarOpen(false); if(isAllNotesModalOpen) setIsAllNotesModalOpen(false); if(isMentionsModalOpen) setIsMentionsModalOpen(false); if(vaultChooser) setVaultChooser(false); if(contentSearch) setContentSearch(false); } return; }
             if (isGlobalSearchActive) {
                 if (e.key==='Escape') { setIsGlobalSearchActive(false); setFSec('center'); e.preventDefault(); return; }
                 if (e.key==='ArrowDown') { e.preventDefault(); setGlobalSearchIndex(p=>(p+1)%globalSearchResults.length); return; }
@@ -547,6 +548,7 @@
                     deleteNote=${deleteNote} currentId=${currentId} canUnlink=${canUnlink} changeRelationship=${changeRelationship} handleLinkAction=${handleLinkAction}
                     search=${search} doSearch=${doSearch} isSearchActive=${isGlobalSearchActive} setIsSearchActive=${setIsGlobalSearchActive} searchResults=${globalSearchResults} selectedSearchIndex=${globalSearchIndex} setSelectedSearchIndex=${setGlobalSearchIndex} navSearch=${navSearch}
                     setIsAllNotesModalOpen=${setIsAllNotesModalOpen}
+                    setIsMentionsModalOpen=${setIsMentionsModalOpen}
                     goToRandomNote=${goToRandomNote}
                     setContentSearch=${setContentSearch}
                     onThemeSelect=${async (id) => {
@@ -746,6 +748,7 @@
                 <${ImportModal} isOpen=${isImportModalOpen} importData=${importData} onClose=${()=>setIsImportModalOpen(false)} onConfirm=${async m=>{await importNotes(importData,m);setIsImportModalOpen(false);window.location.reload()}} />
                 <${RenameModal} isOpen=${isRenameModalOpen} currentTitle=${noteToRename?noteToRename.title:''} onClose=${()=>setIsRenameModalOpen(false)} onRename=${t=>{updateNote(noteToRename.id,{title:t});setIsRenameModalOpen(false);getTopology(currentId).then(setTopo);}} />
                 <${AllNotesModal} isOpen=${isAllNotesModalOpen} onClose=${()=>setIsAllNotesModalOpen(false)} onSelect=${id=>{setIsAllNotesModalOpen(false);nav(id);}} />
+                <${MentionsModal} isOpen=${isMentionsModalOpen} onClose=${()=>setIsMentionsModalOpen(false)} onSelect=${id=>{setIsMentionsModalOpen(false);nav(id);}} currentNoteId=${activeNote?.id} title=${activeNote?.title} />
                 <${ContentSearchModal} 
                     isOpen=${contentSearch} 
                     onClose=${()=>setContentSearch(false)} 

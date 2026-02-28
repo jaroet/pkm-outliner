@@ -12,7 +12,7 @@
             activeNote, handleFavToggle, setIsEditorOpen, activeHasContent, setNoteToRename, setIsRenameModalOpen,
             canUnlink, changeRelationship, handleLinkAction,
             search, doSearch, isSearchActive, setIsSearchActive, searchResults, navSearch, selectedSearchIndex, setSelectedSearchIndex,
-            dark, setIsSettingsOpen, exportData, setImportData, setIsImportModalOpen, setIsAllNotesModalOpen, goToRandomNote, setContentSearch,
+            dark, setIsSettingsOpen, exportData, setImportData, setIsImportModalOpen, setIsAllNotesModalOpen, setIsMentionsModalOpen, goToRandomNote, setContentSearch,
             fontSize, themes, onThemeSelect, onSortChange
         } = props;
 
@@ -90,6 +90,7 @@
 
                     <${Btn} onClick=${() => setContentSearch(true)} icon=${Icons.Search} title="Content Search (Ctrl+Shift+F)" />
                     <${Btn} onClick=${() => setIsAllNotesModalOpen(true)} icon=${Icons.List} title="All Notes" />
+                    <${Btn} onClick=${() => setIsMentionsModalOpen(true)} icon=${Icons.LinkLeft} title="Mentions" disabled=${!activeNote} />
                     <${Btn} onClick=${goToRandomNote} icon=${Icons.Shuffle} title="Random Note (Ctrl+Alt+R)" />
                     
                     <div className="relative">
