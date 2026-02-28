@@ -77,7 +77,18 @@
                 <div className="w-full max-w-4xl h-[80vh] bg-card rounded-xl shadow-2xl border border-gray-200 dark:border-gray-800 flex flex-col text-foreground" onClick=${e => e.stopPropagation()}>
                     <div className="p-4 border-b dark:border-gray-700 flex gap-2">
                         <form onSubmit=${handleSearch} className="flex-1 flex gap-2">
-                            <input ref=${inputRef} type="text" value=${query} onChange=${e => setQuery(e.target.value)} placeholder="Search content..." className="flex-1 p-2 rounded border border-gray-300 dark:border-gray-700 bg-background focus:ring-2 focus:ring-primary outline-none" />
+                            <div className="relative flex-1">
+                                <input ref=${inputRef} type="text" value=${query} onChange=${e => setQuery(e.target.value)} placeholder="Search content..." className="w-full p-2 pr-8 rounded border border-gray-300 dark:border-gray-700 bg-background focus:ring-2 focus:ring-primary outline-none" />
+                                ${query && html`
+                                    <button 
+                                        type="button" 
+                                        onClick=${() => { setQuery(''); inputRef.current?.focus(); }} 
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1"
+                                    >
+                                        <${J.Icons.Close} className="w-4 h-4" />
+                                    </button>
+                                `}
+                            </div>
                             <button type="submit" disabled=${isSearching} className="px-4 py-2 bg-primary text-white rounded hover:opacity-90 disabled:opacity-50">
                                 ${isSearching ? 'Searching...' : 'Search'}
                             </button>
