@@ -8,11 +8,11 @@
     J.TopBar = (props) => {
         const {
             nav, back, forward, canBack, canForward, goHome,
-            cal, setCal, calD, setCalD, handleCalendarSelect, handleCalendarMonthChange,
-            activeNote, handleFavToggle, setEd, activeHasContent, setRenN, setRen,
+            isCalendarOpen, setIsCalendarOpen, calendarDates, setCalendarDates, handleCalendarSelect, handleCalendarMonthChange,
+            activeNote, handleFavToggle, setIsEditorOpen, activeHasContent, setNoteToRename, setIsRenameModalOpen,
             canUnlink, changeRelationship, handleLinkAction,
-            search, doSearch, sAct, setSAct, sRes, navSearch,
-            dark, setSett, exportData, setImpD, setImp, setAllNotes, goToRandomNote, setContentSearch,
+            search, doSearch, isSearchActive, setIsSearchActive, searchResults, navSearch, selectedSearchIndex, setSelectedSearchIndex,
+            dark, setIsSettingsOpen, exportData, setImportData, setIsImportModalOpen, setIsAllNotesModalOpen, goToRandomNote, setContentSearch,
             fontSize, themes, onThemeSelect, onSortChange
         } = props;
 
@@ -24,20 +24,20 @@
 
         // Centralized hook for search list navigation
         const { activeIndex: sIdx, setActiveIndex: setSIdx, listRef, handleKeyDown: handleSearchKeyDown } = useListNavigation({
-            isOpen: sAct && sRes.length > 0,
-            itemCount: sRes.length,
+            isOpen: isSearchActive && searchResults.length > 0,
+            itemCount: searchResults.length,
             onEnter: (index) => {
-                navSearch(sRes[index].id);
+                navSearch(searchResults[index].id);
                 searchRef.current?.blur();
             },
-            onEscape: () => setSAct(false)
+            onEscape: () => setIsSearchActive(false)
         });
 
         // Use the new hook for click-outside behavior
         const themeDropdownRef = useClickOutside(themeDrop, useCallback(() => setThemeDrop(false), []));
         const sortDropdownRef = useClickOutside(sortDrop, useCallback(() => setSortDrop(false), []));
-        const searchDropdownContainerRef = useClickOutside(sAct && sRes.length > 0, useCallback(() => {
-            setSAct(false);
+        const searchDropdownContainerRef = useClickOutside(isSearchActive && searchResults.length > 0, useCallback(() => {
+            setIsSearchActive(false);
             searchRef.current?.blur(); // Optionally blur the search input
         }, []));
 
@@ -84,12 +84,12 @@
                     <${Btn} onClick=${goHome} icon=${Icons.Home} title="Home" />
 
                     <div className="relative">
-                        <${Btn} onClick=${()=>setCal(!cal)} icon=${Icons.Calendar} title="Journal (Ctrl+J)" active=${cal} />
-                        <${CalendarDropdown} isOpen=${cal} onClose=${()=>setCal(false)} onSelectDate=${handleCalendarSelect} existingDates=${calD} onMonthChange=${handleCalendarMonthChange} />
+                        <${Btn} onClick=${()=>setIsCalendarOpen(!isCalendarOpen)} icon=${Icons.Calendar} title="Journal (Ctrl+J)" active=${isCalendarOpen} />
+                        <${CalendarDropdown} isOpen=${isCalendarOpen} onClose=${()=>setIsCalendarOpen(false)} onSelectDate=${handleCalendarSelect} existingDates=${calendarDates} onMonthChange=${handleCalendarMonthChange} />
                     </div>
 
                     <${Btn} onClick=${() => setContentSearch(true)} icon=${Icons.Search} title="Content Search (Ctrl+Shift+F)" />
-                    <${Btn} onClick=${() => setAllNotes(true)} icon=${Icons.List} title="All Notes" />
+                    <${Btn} onClick=${() => setIsAllNotesModalOpen(true)} icon=${Icons.List} title="All Notes" />
                     <${Btn} onClick=${goToRandomNote} icon=${Icons.Shuffle} title="Random Note (Ctrl+Alt+R)" />
                     
                     <div className="relative">
@@ -117,8 +117,8 @@
 
                 <div className="flex items-center gap-1">
                     <${Btn} onClick=${handleFavToggle} icon=${Icons.Star} title="Toggle Favorite" active=${activeNote?.isFavorite} forceColor=${activeNote?.isFavorite} />
-                    <${Btn} onClick=${()=>setEd(true)} icon=${Icons.Edit} title="Edit Content" active=${activeHasContent} forceColor=${activeHasContent} />
-                    <${Btn} onClick=${()=>{if(activeNote){setRenN(activeNote);setRen(true)}}} icon=${Icons.Rename} title="Rename (F2)" />
+                    <${Btn} onClick=${()=>setIsEditorOpen(true)} icon=${Icons.Edit} title="Edit Content" active=${activeHasContent} forceColor=${activeHasContent} />
+                    <${Btn} onClick=${()=>{if(activeNote){setNoteToRename(activeNote);setIsRenameModalOpen(true)}}} icon=${Icons.Rename} title="Rename (F2)" />
                     <${Btn} onClick=${async()=>{if(activeNote&&confirm('Delete Note?')){await deleteNote(activeNote.id);nav(currentId===activeNote.id?await getHomeNoteId():currentId);}}} icon=${Icons.Trash} title="Delete" className="hover:text-red-500" />
                 </div>
 
@@ -140,17 +140,17 @@
                         ref=${searchRef} 
                         value=${search} 
                         onChange=${e=>doSearch(e.target.value)} 
-                        onFocus=${()=>setSAct(true)} 
+                        onFocus=${()=>setIsSearchActive(true)} 
                         onKeyDown=${handleSearchKeyDown} 
                         placeholder="Search..." 
                         className="w-full bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 focus:bg-background rounded-md pl-8 pr-3 py-1 outline-none transition-all border border-transparent text-sm h-8"
-                        style=${{ borderColor: sAct ? 'var(--theme-accent)' : 'transparent' }} 
+                        style=${{ borderColor: isSearchActive ? 'var(--theme-accent)' : 'transparent' }} 
                     />
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-30 text-xs pointer-events-none border border-current px-1 rounded">/</div>
                     
-                    ${sAct&&sRes.length>0&&html`
+                    ${isSearchActive&&searchResults.length>0&&html`
                         <div ref=${(el) => { searchDropdownContainerRef.current = el; listRef.current = el; }} className="absolute top-full left-0 right-0 mt-1 bg-card border border-gray-200 dark:border-gray-700 shadow-xl rounded-md max-h-64 overflow-y-auto z-50 animate-in fade-in slide-in-from-top-1 duration-75">
-                            ${sRes.map((r,i)=>html`
+                            ${searchResults.map((r,i)=>html`
                                 <div 
                                     key=${r.id} 
                                     onMouseDown=${() => {
@@ -187,9 +187,9 @@
                             </div>
                         `}
                     </div>
-                    <${Btn} onClick=${()=>setSett(true)} icon=${Icons.Settings} title="Settings" />
+                    <${Btn} onClick=${()=>setIsSettingsOpen(true)} icon=${Icons.Settings} title="Settings" />
                     <${Btn} onClick=${exportData} icon=${Icons.Download} title="Export JSON" />
-                    <${Btn} onClick=${()=>{const i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=e=>{const f=e.target.files[0];if(f){const r=new FileReader();r.onload=ev=>{setImpD(JSON.parse(ev.target.result));setImp(true);};r.readAsText(f);}};i.click();}} icon=${Icons.Upload} title="Import JSON" />
+                    <${Btn} onClick=${()=>{const i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=e=>{const f=e.target.files[0];if(f){const r=new FileReader();r.onload=ev=>{setImportData(JSON.parse(ev.target.result));setIsImportModalOpen(true);};r.readAsText(f);}};i.click();}} icon=${Icons.Upload} title="Import JSON" />
                 </div>
 
             </div>

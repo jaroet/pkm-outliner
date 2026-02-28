@@ -34,8 +34,11 @@
         const [editContent, setEditContent] = useState('');
 
         // Autocomplete State
-        const [sug,setSug]=useState(false);const [sq,setSq]=useState('');const [sres,setSres]=useState([]);
-        const [cPos,setCPos]=useState({top:0,left:0});const [trigIdx,setTrigIdx]=useState(-1);
+        const [showAutocomplete, setShowAutocomplete] = useState(false);
+        const [autocompleteQuery, setAutocompleteQuery] = useState('');
+        const [autocompleteResults, setAutocompleteResults] = useState([]);
+        const [caretPos, setCaretPos] = useState({ top: 0, left: 0 });
+        const [triggerIndex, setTriggerIndex] = useState(-1);
 
         // Resizable Pane State
         const [splitRatio, setSplitRatio] = useState(0.5);
@@ -86,11 +89,24 @@
         const isEditingRef=useRef(false);
 
         // UI State & Modals (removed `menu` and `setMenu`)
-        const [cal,setCal]=useState(false),[calD,setCalD]=useState(new Set());
+        const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+        const [calendarDates, setCalendarDates] = useState(new Set());
         const [vaultChooser, setVaultChooser] = useState(false);
-        const [search,setSearch]=useState(''),[sRes,setSRes]=useState([]),[sIdx,setSIdx]=useState(0),[sAct,setSAct]=useState(false);
+        const [search, setSearch] = useState('');
+        const [globalSearchResults, setGlobalSearchResults] = useState([]);
+        const [globalSearchIndex, setGlobalSearchIndex] = useState(0);
+        const [isGlobalSearchActive, setIsGlobalSearchActive] = useState(false);
         const [contentSearch, setContentSearch] = useState(false), [contentSearchState, setContentSearchState] = useState({ query: '', results: [] });
-        const [ed,setEd]=useState(false),[edMode,setEdMode]=useState('view'),[lnk,setLnk]=useState(false),[lnkType,setLnkType]=useState('up'),[ren,setRen]=useState(false),[renN,setRenN]=useState(null),[sett,setSett]=useState(false),[imp,setImp]=useState(false),[impD,setImpD]=useState([]),[allNotes,setAllNotes]=useState(false);
+        const [isEditorOpen, setIsEditorOpen] = useState(false);
+        const [edMode, setEdMode] = useState('view');
+        const [isLinkerModalOpen, setIsLinkerModalOpen] = useState(false);
+        const [linkerType, setLinkerType] = useState('up');
+        const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
+        const [noteToRename, setNoteToRename] = useState(null);
+        const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+        const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+        const [importData, setImportData] = useState([]);
+        const [isAllNotesModalOpen, setIsAllNotesModalOpen] = useState(false);
         const searchInputRef=useRef(null);
         const textareaRef = useRef(null);
         const previewRef = useRef(null);
@@ -204,13 +220,13 @@
 
         // Autocomplete Logic
         useEffect(()=>{
-            if(sug){
+            if(showAutocomplete){
                 const t=setTimeout(async()=>{
-                    setSres(await searchNotes(sq)); 
+                    setAutocompleteResults(await searchNotes(autocompleteQuery)); 
                 },150);
                 return ()=>clearTimeout(t);
             }
-        },[sq,sug]);
+        },[autocompleteQuery, showAutocomplete]);
 
         const handleContentChange = (e) => {
             const v = e.target.value;
@@ -220,38 +236,38 @@
             if (lo !== -1) {
                 const tb = v.slice(lo + 2, c);
                 if (tb.includes(']]') || tb.includes('\n')) {
-                    setSug(false);
+                    setShowAutocomplete(false);
                 } else {
-                    setTrigIdx(lo);
-                    setSq(tb);
-                    setSug(true);
+                    setTriggerIndex(lo);
+                    setAutocompleteQuery(tb);
+                    setShowAutocomplete(true);
                     const coords = getCaretCoordinates(e.target, lo);
-                    setCPos({ top: coords.top - e.target.scrollTop, left: coords.left - e.target.scrollLeft });
+                    setCaretPos({ top: coords.top - e.target.scrollTop, left: coords.left - e.target.scrollLeft });
                 }
             } else {
-                setSug(false);
+                setShowAutocomplete(false);
             }
         };
 
         const insertLink = (title) => {
-            const b = editContent.slice(0, trigIdx);
+            const b = editContent.slice(0, triggerIndex);
             const a = editContent.slice(textareaRef.current.selectionEnd);
             const n = `${b}[[${title}]]${a}`;
             setEditContent(n);
-            setSug(false);
+            setShowAutocomplete(false);
             setTimeout(() => {
                 if (textareaRef.current) {
                     textareaRef.current.focus();
-                    const p = trigIdx + 2 + title.length + 2;
+                    const p = triggerIndex + 2 + title.length + 2;
                     textareaRef.current.setSelectionRange(p, p);
                 }
             }, 50);
         };
 
-        const { activeIndex: sugIdx, setActiveIndex: setSugIdx, listRef: sugListRef, handleKeyDown: handleAutocompleteKeyDown } = useListNavigation({
-            isOpen: sug, itemCount: sres.length, onEnter: (index) => { if (sres[index]) insertLink(sres[index].title); }, onEscape: () => setSug(false)
+        const { activeIndex: selectedSuggestionIndex, setActiveIndex: setSelectedSuggestionIndex, listRef: sugListRef, handleKeyDown: handleAutocompleteKeyDown } = useListNavigation({
+            isOpen: showAutocomplete, itemCount: autocompleteResults.length, onEnter: (index) => { if (autocompleteResults[index]) insertLink(autocompleteResults[index].title); }, onEscape: () => setShowAutocomplete(false)
         });
-        const autocompleteDropdownRef = useClickOutside(sug, useCallback(() => setSug(false), []));
+        const autocompleteDropdownRef = useClickOutside(showAutocomplete, useCallback(() => setShowAutocomplete(false), []));
 
         // Auto-save logic
         const saveContent = useCallback(async (content) => {
@@ -310,8 +326,8 @@
                 if(target.linksTo.includes(aid)) await updateNote(id,{linksTo:target.linksTo.filter(x=>x!==aid)});
 
                 // Apply the new link
-                if(lnkType==='up'){ const trg=await getNote(id); await updateNote(id,{linksTo:[...trg.linksTo,aid]}); }
-                else if(lnkType==='down'){ const anc=await getNote(aid); await updateNote(aid,{linksTo:[...anc.linksTo,id]}); }
+                if(linkerType==='up'){ const trg=await getNote(id); await updateNote(id,{linksTo:[...trg.linksTo,aid]}); }
+                else if(linkerType==='down'){ const anc=await getNote(aid); await updateNote(aid,{linksTo:[...anc.linksTo,id]}); }
             };
 
             if (tid) { await doL(tid); } 
@@ -346,7 +362,7 @@
             if (idx !== -1) newLinks.splice(idx + 1, 0, newNote.id); else newLinks.push(newNote.id);
             await updateNote(center.id, { linksTo: newLinks });
             await getTopology(currentId).then(setTopo); getNoteCount().then(setCount);
-            setRenN(newNote); setRen(true);
+            setNoteToRename(newNote); setIsRenameModalOpen(true);
         };
 
         const changeRelationship = async (type) => {
@@ -363,13 +379,13 @@
             getTopology(currentId).then(setTopo); setSel(new Set());
         };
 
-        const handleLinkAction = (type) => { if(sel.size > 0) changeRelationship(type); else { setLnkType(type); setLnk(true); } };
+        const handleLinkAction = (type) => { if(sel.size > 0) changeRelationship(type); else { setLinkerType(type); setIsLinkerModalOpen(true); } };
         const handleFavToggle = async () => { const n = getFocusedNote(); if (n) { await toggleFavorite(n.id); setCount(c => c + 1); getTopology(currentId).then(setTopo); getFavorites().then(setFavs); } };
         const getItemsPerColumn = (id) => { const el = document.getElementById(id); if(!el) return 1; const kids = Array.from(el.children).filter(c=>c.id.startsWith('note-')); if(kids.length < 2) return 1; const firstLeft = kids[0].offsetLeft; for(let i=1; i<kids.length; i++) if(kids[i].offsetLeft > firstLeft + 20) return i; return kids.length; };
-        const doSearch=async(q)=>{setSearch(q);if(q){setSRes(await searchNotes(q));setSIdx(0);}else setSRes([]);};
+        const doSearch=async(q)=>{setSearch(q);if(q){setGlobalSearchResults(await searchNotes(q));setGlobalSearchIndex(0);}else setGlobalSearchResults([]);};
         const navSearch = (id) => { // This function now only handles search-specific UI state.
             nav(id);
-            setSAct(false);
+            setIsGlobalSearchActive(false);
             setSearch('');
         };
 
@@ -389,18 +405,18 @@
         // --- KEYBOARD HANDLER ---
         const handleGlobalKeyDown = useCallback(async (e) => {
             const selState=selRef.current, fSecState=fSecRef.current, fIdxState=fIdxRef.current, topoState=topoRef.current, favsState=favsRef.current, secIndState=secIndRef.current, isEditingState=isEditingRef.current;
-            if (ren||ed||lnk||sett||imp||cal||allNotes||vaultChooser||contentSearch) { if (e.key === 'Escape') { if(cal) setCal(false); if(allNotes) setAllNotes(false); if(vaultChooser) setVaultChooser(false); if(contentSearch) setContentSearch(false); } return; }
-            if (sAct) {
-                if (e.key==='Escape') { setSAct(false); setFSec('center'); e.preventDefault(); return; }
-                if (e.key==='ArrowDown') { e.preventDefault(); setSIdx(p=>(p+1)%sRes.length); return; }
-                if (e.key==='ArrowUp') { e.preventDefault(); setSIdx(p=>(p-1+sRes.length)%sRes.length); return; }
-                if (e.key==='Enter') { e.preventDefault(); if(sRes[sIdx]) { navSearch(sRes[sIdx].id); } return; }
+            if (isRenameModalOpen||isEditorOpen||isLinkerModalOpen||isSettingsOpen||isImportModalOpen||isCalendarOpen||isAllNotesModalOpen||vaultChooser||contentSearch) { if (e.key === 'Escape') { if(isCalendarOpen) setIsCalendarOpen(false); if(isAllNotesModalOpen) setIsAllNotesModalOpen(false); if(vaultChooser) setVaultChooser(false); if(contentSearch) setContentSearch(false); } return; }
+            if (isGlobalSearchActive) {
+                if (e.key==='Escape') { setIsGlobalSearchActive(false); setFSec('center'); e.preventDefault(); return; }
+                if (e.key==='ArrowDown') { e.preventDefault(); setGlobalSearchIndex(p=>(p+1)%globalSearchResults.length); return; }
+                if (e.key==='ArrowUp') { e.preventDefault(); setGlobalSearchIndex(p=>(p-1+globalSearchResults.length)%globalSearchResults.length); return; }
+                if (e.key==='Enter') { e.preventDefault(); if(globalSearchResults[globalSearchIndex]) { navSearch(globalSearchResults[globalSearchIndex].id); } return; }
                 return;
             }
             if (e.key === 'Escape') { if (selState.size > 0) { setSel(new Set()); e.preventDefault(); return; } }
             if (e.altKey && e.key === 'ArrowLeft' && fSecState !== 'content') { e.preventDefault(); back(); return; }
             if (e.altKey && e.key === 'ArrowRight' && fSecState !== 'content') { e.preventDefault(); forward(); return; }
-            if (e.key === '/' && fSecState !== 'content') { e.preventDefault(); setSAct(true); setTimeout(()=>document.querySelector('input[placeholder="Search..."]')?.focus(), 50); return; }
+            if (e.key === '/' && fSecState !== 'content') { e.preventDefault(); setIsGlobalSearchActive(true); setTimeout(()=>document.querySelector('input[placeholder="Search..."]')?.focus(), 50); return; }
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'j') { e.preventDefault(); nav(await goToToday()); return; }
             if ((e.ctrlKey || e.metaKey) && e.altKey && (e.code === 'KeyR' || e.key.toLowerCase() === 'r')) { e.preventDefault(); goToRandomNote(); return; }
             if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'f') { e.preventDefault(); setContentSearch(true); return; }
@@ -443,10 +459,10 @@
 
             if (e.key === 'Backspace' && fSecState !== 'content') { e.preventDefault(); changeRelationship('unlink'); return; }
             if ((e.ctrlKey || e.metaKey) && fSecState !== 'content') {
-                if (e.key === 'ArrowUp') { e.preventDefault(); if(selState.size) changeRelationship('up'); else { setLnkType('up'); setLnk(true); } return; }
-                if (e.key === 'ArrowDown') { e.preventDefault(); if(selState.size) changeRelationship('down'); else { setLnkType('down'); setLnk(true); } return; }
+                if (e.key === 'ArrowUp') { e.preventDefault(); if(selState.size) changeRelationship('up'); else { setLinkerType('up'); setIsLinkerModalOpen(true); } return; }
+                if (e.key === 'ArrowDown') { e.preventDefault(); if(selState.size) changeRelationship('down'); else { setLinkerType('down'); setIsLinkerModalOpen(true); } return; }
             }
-            if (e.key === 'F2') { e.preventDefault(); const n = getFocusedNote(); if(n) { setRenN(n); setRen(true); } return; }
+            if (e.key === 'F2') { e.preventDefault(); const n = getFocusedNote(); if(n) { setNoteToRename(n); setIsRenameModalOpen(true); } return; }
             if (e.key === ' ' && fSecState !== 'content') { e.preventDefault(); const n = getFocusedNote(); if(n && n.id !== currentId) nav(n.id); return; }
             
             if (e.shiftKey && e.key === 'Enter') {
@@ -516,7 +532,7 @@
                     if (note) nav(note.id);
                 }
             }
-        }, [currentId, back, forward, sRes, sIdx, sAct, ren, ed, lnk, sett, imp, cal, goToRandomNote, contentSearch, contentSource]);
+        }, [currentId, back, forward, globalSearchResults, globalSearchIndex, isGlobalSearchActive, isRenameModalOpen, isEditorOpen, isLinkerModalOpen, isSettingsOpen, isImportModalOpen, isCalendarOpen, goToRandomNote, contentSearch, contentSource]);
 
         const handleKeyDownRef = useRef(handleGlobalKeyDown);
         useEffect(() => { handleKeyDownRef.current = handleGlobalKeyDown; }, [handleGlobalKeyDown]);
@@ -526,11 +542,11 @@
             <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground font-sans flex-col">
                 <${TopBar}
                     nav=${nav} back=${back} forward=${forward} canBack=${canBack} canForward=${canForward} goHome=${async()=>{nav(await getHomeNoteId())}}
-                    cal=${cal} setCal=${setCal} calD=${calD} setCalD=${setCalD} handleCalendarSelect=${async(d)=>{setCal(false);nav(await goToDate(d))}} handleCalendarMonthChange=${async(y,m)=>{const p=`${y}-${String(m).padStart(2,'0')}-`;setCalD(new Set(await getNoteTitlesByPrefix(p)))}}
-                    activeNote=${activeNote} handleFavToggle=${handleFavToggle} setEd=${setEd} activeHasContent=${activeHasContent} setRenN=${setRenN} setRen=${setRen}
+                    isCalendarOpen=${isCalendarOpen} setIsCalendarOpen=${setIsCalendarOpen} calendarDates=${calendarDates} setCalendarDates=${setCalendarDates} handleCalendarSelect=${async(d)=>{setIsCalendarOpen(false);nav(await goToDate(d))}} handleCalendarMonthChange=${async(y,m)=>{const p=`${y}-${String(m).padStart(2,'0')}-`;setCalendarDates(new Set(await getNoteTitlesByPrefix(p)))}}
+                    activeNote=${activeNote} handleFavToggle=${handleFavToggle} setIsEditorOpen=${setIsEditorOpen} activeHasContent=${activeHasContent} setNoteToRename=${setNoteToRename} setIsRenameModalOpen=${setIsRenameModalOpen}
                     deleteNote=${deleteNote} currentId=${currentId} canUnlink=${canUnlink} changeRelationship=${changeRelationship} handleLinkAction=${handleLinkAction}
-                    search=${search} doSearch=${doSearch} sAct=${sAct} setSAct=${setSAct} sRes=${sRes} sIdx=${sIdx} setSIdx=${setSIdx} navSearch=${navSearch}
-                    setAllNotes=${setAllNotes}
+                    search=${search} doSearch=${doSearch} isSearchActive=${isGlobalSearchActive} setIsSearchActive=${setIsGlobalSearchActive} searchResults=${globalSearchResults} selectedSearchIndex=${globalSearchIndex} setSelectedSearchIndex=${setGlobalSearchIndex} navSearch=${navSearch}
+                    setIsAllNotesModalOpen=${setIsAllNotesModalOpen}
                     goToRandomNote=${goToRandomNote}
                     setContentSearch=${setContentSearch}
                     onThemeSelect=${async (id) => {
@@ -538,7 +554,7 @@
                         if(t) { await setActiveThemeId(id); applyTheme(t); }
                     }}
                     themes=${themes}
-                    dark=${dark} setSett=${setSett} exportData=${exportData} setImpD=${setImpD} setImp=${setImp} fontSize=${fs}
+                    dark=${dark} setIsSettingsOpen=${setIsSettingsOpen} exportData=${exportData} setImportData=${setImportData} setIsImportModalOpen=${setIsImportModalOpen} fontSize=${fs}
                     onSortChange=${handleSortChange}
                 />
 
@@ -640,7 +656,7 @@
                                     value=${editContent}
                                     onChange=${handleContentChange}
                                     onKeyDown=${(e) => {
-                                        if (sug) {
+                                        if (showAutocomplete) {
                                             if (['ArrowUp', 'ArrowDown', 'Enter', 'Tab', 'Escape'].includes(e.key)) {
                                                 e.stopPropagation();
                                                 handleAutocompleteKeyDown(e);
@@ -649,11 +665,11 @@
                                     }}
                                     placeholder="Start typing..."
                                 ></textarea>
-                                ${sug && html`
-                                    <div ref=${(el) => { autocompleteDropdownRef.current = el; sugListRef.current = el; }} className="absolute z-50 w-64 bg-card border border-gray-200 dark:border-gray-700 shadow-xl rounded-md max-h-60 overflow-y-auto custom-scrollbar" style=${{top:cPos.top+30,left:cPos.left+24}}>
-                                        ${sres.length===0?html`<div className="p-2 text-xs text-gray-500 italic">No matching notes</div>`
-                                        :sres.map((s,i)=>html`
-                                            <div key=${s.id} onClick=${()=>insertLink(s.title)} onMouseEnter=${() => setSugIdx(i)} className=${`px-3 py-2 text-sm cursor-pointer ${i===sugIdx?'bg-primary text-primary-foreground':'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
+                                ${showAutocomplete && html`
+                                    <div ref=${(el) => { autocompleteDropdownRef.current = el; sugListRef.current = el; }} className="absolute z-50 w-64 bg-card border border-gray-200 dark:border-gray-700 shadow-xl rounded-md max-h-60 overflow-y-auto custom-scrollbar" style=${{top:caretPos.top+30,left:caretPos.left+24}}>
+                                        ${autocompleteResults.length===0?html`<div className="p-2 text-xs text-gray-500 italic">No matching notes</div>`
+                                        :autocompleteResults.map((s,i)=>html`
+                                            <div key=${s.id} onClick=${()=>insertLink(s.title)} onMouseEnter=${() => setSelectedSuggestionIndex(i)} className=${`px-3 py-2 text-sm cursor-pointer ${i===selectedSuggestionIndex?'bg-primary text-primary-foreground':'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
                                                 ${s.title}
                                             </div>
                                         `)}
@@ -684,8 +700,8 @@
                 <${StatusBar} noteCount=${count} vaultName=${getCurrentVaultName()} version=${APP_VERSION} fontSize=${fs} onVaultClick=${() => setVaultChooser(p => !p)} activeNote=${activeNote} />
 
                 <${Editor} 
-                    isOpen=${ed} mode=${edMode} note=${fSec==='center'?topo.center:getSortedNotes(fSec,topo,favs)[fIdx]} 
-                    onClose=${()=>setEd(false)} 
+                    isOpen=${isEditorOpen} mode=${edMode} note=${fSec==='center'?topo.center:getSortedNotes(fSec,topo,favs)[fIdx]} 
+                    onClose=${()=>setIsEditorOpen(false)} 
                     onSave=${async (id, c) => {
                         const WIKI_LINK_REGEX = /\[\[([^|\]\n]+)(?:\|[^\]\n]*)?\]\]/g;
                         const outgoingLinkIds = new Set();
@@ -714,11 +730,11 @@
                     onClose=${() => setVaultChooser(false)} 
                     onManage=${() => {
                         setVaultChooser(false);
-                        setSett({ open: true, initialTab: 'database', focusOn: 'newVaultInput' });
+                        setIsSettingsOpen({ open: true, initialTab: 'database', focusOn: 'newVaultInput' });
                     }}
                 />
-                <${LinkerModal} isOpen=${lnk} type=${lnkType} onClose=${()=>setLnk(false)} onSelect=${handleLink} sourceNoteId=${getFocusedNote()?.id || currentId} />
-                <${SettingsModal} isOpen=${sett.open || sett === true} onClose=${()=>setSett(false)} currentCentralNoteId=${currentId} fontSize=${fs} onFontSizeChange=${setFs} onThemeChange=${async ()=>{
+                <${LinkerModal} isOpen=${isLinkerModalOpen} type=${linkerType} onClose=${()=>setIsLinkerModalOpen(false)} onSelect=${handleLink} sourceNoteId=${getFocusedNote()?.id || currentId} />
+                <${SettingsModal} isOpen=${isSettingsOpen.open || isSettingsOpen === true} onClose=${()=>setIsSettingsOpen(false)} currentCentralNoteId=${currentId} fontSize=${fs} onFontSizeChange=${setFs} onThemeChange=${async ()=>{
                     const tId = await getActiveThemeId();
                     const t = await getTheme(tId);
                     if(t) applyTheme(t);
@@ -726,10 +742,10 @@
                 }} onSettingsChange=${async ()=>{
                     getSectionVisibility().then(setVis);
                     setAttachmentAliases(await getAttachmentAliases());
-                }} initialTab=${sett.initialTab} focusOn=${sett.focusOn} />
-                <${ImportModal} isOpen=${imp} importData=${impD} onClose=${()=>setImp(false)} onConfirm=${async m=>{await importNotes(impD,m);setImp(false);window.location.reload()}} />
-                <${RenameModal} isOpen=${ren} currentTitle=${renN?renN.title:''} onClose=${()=>setRen(false)} onRename=${t=>{updateNote(renN.id,{title:t});setRen(false);getTopology(currentId).then(setTopo);}} />
-                <${AllNotesModal} isOpen=${allNotes} onClose=${()=>setAllNotes(false)} onSelect=${id=>{setAllNotes(false);nav(id);}} />
+                }} initialTab=${isSettingsOpen.initialTab} focusOn=${isSettingsOpen.focusOn} />
+                <${ImportModal} isOpen=${isImportModalOpen} importData=${importData} onClose=${()=>setIsImportModalOpen(false)} onConfirm=${async m=>{await importNotes(importData,m);setIsImportModalOpen(false);window.location.reload()}} />
+                <${RenameModal} isOpen=${isRenameModalOpen} currentTitle=${noteToRename?noteToRename.title:''} onClose=${()=>setIsRenameModalOpen(false)} onRename=${t=>{updateNote(noteToRename.id,{title:t});setIsRenameModalOpen(false);getTopology(currentId).then(setTopo);}} />
+                <${AllNotesModal} isOpen=${isAllNotesModalOpen} onClose=${()=>setIsAllNotesModalOpen(false)} onSelect=${id=>{setIsAllNotesModalOpen(false);nav(id);}} />
                 <${ContentSearchModal} 
                     isOpen=${contentSearch} 
                     onClose=${()=>setContentSearch(false)} 
