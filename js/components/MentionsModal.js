@@ -24,7 +24,7 @@
                     </div>
                     <div className="flex-1 overflow-y-auto custom-scrollbar">
                         ${notes.length === 0 ? html`<div className="p-4 text-center text-gray-500">No mentions found.</div>` : notes.map(note => html`
-                            <div key=${note.id} onClick=${() => onSelect(note.id)} className="flex justify-between items-center px-4 py-3 border-b border-gray-100 dark:border-gray-800 hover:bg-primary/10 cursor-pointer">
+                            <div key=${note.id} onClick=${() => onSelect(note.id, title)} className="flex justify-between items-center px-4 py-3 border-b border-gray-100 dark:border-gray-800 hover:bg-primary/10 cursor-pointer">
                                 <span className="font-medium truncate">${note.title}</span>
                             </div>
                         `)}

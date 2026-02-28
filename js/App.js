@@ -32,6 +32,7 @@
         const [contentSource, setContentSource] = useState(null);
         const [isEditing, setIsEditing] = useState(false);
         const [editContent, setEditContent] = useState('');
+        const [highlightTerm, setHighlightTerm] = useState(null);
 
         // Autocomplete State
         const [showAutocomplete, setShowAutocomplete] = useState(false);
@@ -112,6 +113,25 @@
         const textareaRef = useRef(null);
         const previewRef = useRef(null);
 
+        const getSortedNotes = (sec, t=topo, f=favs) => {
+            if(sec==='center')return t.center?[t.center]:[];
+            let n=[]; 
+            if(sec==='up')n=t.uppers;
+            else if(sec==='down')n=t.downers;
+            else if(sec==='favs')n=f;
+            return n || [];
+        };
+
+        const getFocusedNote = () => {
+            const section = fSec === 'content' ? (contentSource || 'center') : fSec;
+            if (section === 'center') return topo.center;
+            const index = fSec === 'content' ? (secInd[section] || 0) : fIdx;
+            return getSortedNotes(section, topo, favs)[index] || null;
+        };
+
+        const activeNote = getFocusedNote();
+        const prevH = useMemo(() => activeNote && activeNote.content ? marked.parse(activeNote.content) : '', [activeNote]);
+
         // --- Effects & Sync ---
         useEffect(()=>{
             const init = async () => {
@@ -152,6 +172,30 @@
             }
         },[currentId]);
 
+        // Highlight term logic (for Mentions navigation)
+        useEffect(() => {
+            if (highlightTerm && activeNote && activeNote.id && !isEditing) {
+                const t = setTimeout(() => {
+                    if (previewRef.current) {
+                        const safeTitle = highlightTerm.replace(/"/g, '\\"');
+                        const links = previewRef.current.querySelectorAll(`a[data-title="${safeTitle}"]`);
+                        if (links.length > 0) {
+                            const selection = window.getSelection();
+                            selection.removeAllRanges();
+                            links.forEach(link => {
+                                const range = document.createRange();
+                                range.selectNodeContents(link);
+                                selection.addRange(range);
+                            });
+                            links[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                        setHighlightTerm(null);
+                    }
+                }, 150);
+                return () => clearTimeout(t);
+            }
+        }, [activeNote?.id, highlightTerm, isEditing]);
+
         // Sync Refs
         useEffect(()=>{selRef.current=sel},[sel]);
         useEffect(()=>{fSecRef.current=fSec},[fSec]);
@@ -161,25 +205,6 @@
         useEffect(()=>{visRef.current=vis},[vis]);
         useEffect(()=>{secIndRef.current=secInd},[secInd]);
         useEffect(()=>{isEditingRef.current=isEditing},[isEditing]);
-
-        const getSortedNotes = (sec, t=topo, f=favs) => {
-            if(sec==='center')return t.center?[t.center]:[];
-            let n=[]; 
-            if(sec==='up')n=t.uppers;
-            else if(sec==='down')n=t.downers;
-            else if(sec==='favs')n=f;
-            return n || [];
-        };
-
-        const getFocusedNote = () => {
-            const section = fSec === 'content' ? (contentSource || 'center') : fSec;
-            if (section === 'center') return topo.center;
-            const index = fSec === 'content' ? (secInd[section] || 0) : fIdx;
-            return getSortedNotes(section, topo, favs)[index] || null;
-        };
-
-        const activeNote = getFocusedNote();
-        const prevH = useMemo(() => activeNote && activeNote.content ? marked.parse(activeNote.content) : '', [activeNote]);
 
         useEffect(() => {
             if (activeNote) {
@@ -748,7 +773,13 @@
                 <${ImportModal} isOpen=${isImportModalOpen} importData=${importData} onClose=${()=>setIsImportModalOpen(false)} onConfirm=${async m=>{await importNotes(importData,m);setIsImportModalOpen(false);window.location.reload()}} />
                 <${RenameModal} isOpen=${isRenameModalOpen} currentTitle=${noteToRename?noteToRename.title:''} onClose=${()=>setIsRenameModalOpen(false)} onRename=${t=>{updateNote(noteToRename.id,{title:t});setIsRenameModalOpen(false);getTopology(currentId).then(setTopo);}} />
                 <${AllNotesModal} isOpen=${isAllNotesModalOpen} onClose=${()=>setIsAllNotesModalOpen(false)} onSelect=${id=>{setIsAllNotesModalOpen(false);nav(id);}} />
-                <${MentionsModal} isOpen=${isMentionsModalOpen} onClose=${()=>setIsMentionsModalOpen(false)} onSelect=${id=>{setIsMentionsModalOpen(false);nav(id);}} currentNoteId=${activeNote?.id} title=${activeNote?.title} />
+                <${MentionsModal} isOpen=${isMentionsModalOpen} onClose=${()=>setIsMentionsModalOpen(false)} onSelect=${(id, term)=>{
+                    setIsMentionsModalOpen(false);
+                    setHighlightTerm(term);
+                    nav(id);
+                    setIsEditing(false);
+                    setFSec('content');
+                }} currentNoteId=${activeNote?.id} title=${activeNote?.title} />
                 <${ContentSearchModal} 
                     isOpen=${contentSearch} 
                     onClose=${()=>setContentSearch(false)} 
