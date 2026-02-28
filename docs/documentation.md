@@ -70,6 +70,11 @@ You can create separate "Vaults" (databases) to keep different projects or areas
 *   **Export**: Download your entire vault as a JSON file via the Download icon.
 *   **Import**: Restore or merge data from a JSON file via the Upload icon.
 
+### Mentions
+Click the **Mentions** icon (link arrow) in the top bar to see a list of all notes that link to the currently active note.
+*   Clicking a note in this list will navigate to it.
+*   The specific link to the original note will be highlighted in the content view to provide context.
+
 ### Attachment Aliases
 In Settings, you can define "Aliases" for local file paths.
 *   *Example*: Map `ds` to `/Users/Documents`.
