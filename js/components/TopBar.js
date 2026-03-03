@@ -9,7 +9,7 @@
         const {
             nav, back, forward, canBack, canForward, goHome,
             isCalendarOpen, setIsCalendarOpen, calendarDates, setCalendarDates, handleCalendarSelect, handleCalendarMonthChange,
-            activeNote, handleFavToggle, setIsEditorOpen, activeHasContent, setNoteToRename, setIsRenameModalOpen,
+            activeNote, handleFavToggle, toggleEditing, isEditing, activeHasContent, setNoteToRename, setIsRenameModalOpen,
             canUnlink, changeRelationship, handleLinkAction,
             search, doSearch, isSearchActive, setIsSearchActive, searchResults, navSearch, selectedSearchIndex, setSelectedSearchIndex,
             dark, setIsSettingsOpen, exportData, setImportData, setIsImportModalOpen, setIsAllNotesModalOpen, setIsMentionsModalOpen, goToRandomNote, setContentSearch,
@@ -118,7 +118,7 @@
 
                 <div className="flex items-center gap-1">
                     <${Btn} onClick=${handleFavToggle} icon=${Icons.Star} title="Toggle Favorite" active=${activeNote?.isFavorite} forceColor=${activeNote?.isFavorite} />
-                    <${Btn} onClick=${()=>setIsEditorOpen(true)} icon=${Icons.Edit} title="Edit Content" active=${activeHasContent} forceColor=${activeHasContent} />
+                    <${Btn} onClick=${toggleEditing} icon=${Icons.Edit} title="Edit Content" active=${isEditing} forceColor=${activeHasContent} />
                     <${Btn} onClick=${()=>{if(activeNote){setNoteToRename(activeNote);setIsRenameModalOpen(true)}}} icon=${Icons.Rename} title="Rename (F2)" />
                     <${Btn} onClick=${async()=>{if(activeNote&&confirm('Delete Note?')){await deleteNote(activeNote.id);nav(currentId===activeNote.id?await getHomeNoteId():currentId);}}} icon=${Icons.Trash} title="Delete" className="hover:text-red-500" />
                 </div>

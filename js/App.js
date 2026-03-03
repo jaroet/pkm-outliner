@@ -20,7 +20,7 @@
     const { db, getTopology, createNote, updateNote, deleteNote, getFavorites, toggleFavorite, seedDatabase, getNote, getAllNotes, importNotes, getHomeNoteId, searchNotes, searchContent, getFontSize, getNoteCount, getVaultList, getCurrentVaultName, switchVault, getSectionVisibility, findNoteByTitle, getNoteTitlesByPrefix, getActiveThemeId, getTheme, setActiveThemeId, getThemes, getAttachmentAliases, getSplitRatio, setSplitRatio: dbSetSplitRatio } = J.Services.DB;
     const { goToDate, goToToday, getDateSubtitle } = J.Services.Journal; 
     const { createRenderer, wikiLinkExtension, setAttachmentAliases } = J.Services.Markdown;
-    const { NoteCard, LinkerModal, Editor, SettingsModal, ImportModal, RenameModal, NoteSection, TopBar, StatusBar, Icons, AllNotesModal, ContentSearchModal, VaultChooser, MentionsModal, APP_VERSION } = J;
+    const { NoteCard, LinkerModal, SettingsModal, ImportModal, RenameModal, NoteSection, TopBar, StatusBar, Icons, AllNotesModal, ContentSearchModal, VaultChooser, MentionsModal, APP_VERSION } = J;
     const { useHistory, useListNavigation, useClickOutside } = J.Hooks;
 
     marked.use({renderer:createRenderer({clickableCheckboxes:false}),extensions:[wikiLinkExtension]});
@@ -98,8 +98,6 @@
         const [globalSearchIndex, setGlobalSearchIndex] = useState(0);
         const [isGlobalSearchActive, setIsGlobalSearchActive] = useState(false);
         const [contentSearch, setContentSearch] = useState(false), [contentSearchState, setContentSearchState] = useState({ query: '', results: [] });
-        const [isEditorOpen, setIsEditorOpen] = useState(false);
-        const [edMode, setEdMode] = useState('view');
         const [isLinkerModalOpen, setIsLinkerModalOpen] = useState(false);
         const [linkerType, setLinkerType] = useState('up');
         const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
@@ -328,6 +326,16 @@
         const nav=(id)=>visit(id);
         const togSel=(id)=>id!==currentId&&setSel(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n;});
         
+        const toggleEditing = () => {
+            if (fSec !== 'content') {
+                setContentSource(fSec);
+                setFSec('content');
+                setIsEditing(true);
+            } else {
+                setIsEditing(p => !p);
+            }
+        };
+
         const goToRandomNote = async () => {
             const c = await getNoteCount();
             if (c > 0) {
@@ -431,7 +439,7 @@
         // --- KEYBOARD HANDLER ---
         const handleGlobalKeyDown = useCallback(async (e) => {
             const selState=selRef.current, fSecState=fSecRef.current, fIdxState=fIdxRef.current, topoState=topoRef.current, favsState=favsRef.current, secIndState=secIndRef.current, isEditingState=isEditingRef.current;
-            if (isRenameModalOpen||isEditorOpen||isLinkerModalOpen||isSettingsOpen||isImportModalOpen||isCalendarOpen||isAllNotesModalOpen||isMentionsModalOpen||vaultChooser||contentSearch) { if (e.key === 'Escape') { if(isCalendarOpen) setIsCalendarOpen(false); if(isAllNotesModalOpen) setIsAllNotesModalOpen(false); if(isMentionsModalOpen) setIsMentionsModalOpen(false); if(vaultChooser) setVaultChooser(false); if(contentSearch) setContentSearch(false); } return; }
+            if (isRenameModalOpen||isLinkerModalOpen||isSettingsOpen||isImportModalOpen||isCalendarOpen||isAllNotesModalOpen||isMentionsModalOpen||vaultChooser||contentSearch) { if (e.key === 'Escape') { if(isCalendarOpen) setIsCalendarOpen(false); if(isAllNotesModalOpen) setIsAllNotesModalOpen(false); if(isMentionsModalOpen) setIsMentionsModalOpen(false); if(vaultChooser) setVaultChooser(false); if(contentSearch) setContentSearch(false); } return; }
             if (isGlobalSearchActive) {
                 if (e.key==='Escape') { setIsGlobalSearchActive(false); setFSec('center'); e.preventDefault(); return; }
                 if (e.key==='ArrowDown') { e.preventDefault(); setGlobalSearchIndex(p=>(p+1)%globalSearchResults.length); return; }
@@ -558,7 +566,7 @@
                     if (note) nav(note.id);
                 }
             }
-        }, [currentId, back, forward, globalSearchResults, globalSearchIndex, isGlobalSearchActive, isRenameModalOpen, isEditorOpen, isLinkerModalOpen, isSettingsOpen, isImportModalOpen, isCalendarOpen, goToRandomNote, contentSearch, contentSource]);
+        }, [currentId, back, forward, globalSearchResults, globalSearchIndex, isGlobalSearchActive, isRenameModalOpen, isLinkerModalOpen, isSettingsOpen, isImportModalOpen, isCalendarOpen, goToRandomNote, contentSearch, contentSource]);
 
         const handleKeyDownRef = useRef(handleGlobalKeyDown);
         useEffect(() => { handleKeyDownRef.current = handleGlobalKeyDown; }, [handleGlobalKeyDown]);
@@ -569,7 +577,7 @@
                 <${TopBar}
                     nav=${nav} back=${back} forward=${forward} canBack=${canBack} canForward=${canForward} goHome=${async()=>{nav(await getHomeNoteId())}}
                     isCalendarOpen=${isCalendarOpen} setIsCalendarOpen=${setIsCalendarOpen} calendarDates=${calendarDates} setCalendarDates=${setCalendarDates} handleCalendarSelect=${async(d)=>{setIsCalendarOpen(false);nav(await goToDate(d))}} handleCalendarMonthChange=${async(y,m)=>{const p=`${y}-${String(m).padStart(2,'0')}-`;setCalendarDates(new Set(await getNoteTitlesByPrefix(p)))}}
-                    activeNote=${activeNote} handleFavToggle=${handleFavToggle} setIsEditorOpen=${setIsEditorOpen} activeHasContent=${activeHasContent} setNoteToRename=${setNoteToRename} setIsRenameModalOpen=${setIsRenameModalOpen}
+                    activeNote=${activeNote} handleFavToggle=${handleFavToggle} toggleEditing=${toggleEditing} isEditing=${isEditing} activeHasContent=${activeHasContent} setNoteToRename=${setNoteToRename} setIsRenameModalOpen=${setIsRenameModalOpen}
                     deleteNote=${deleteNote} currentId=${currentId} canUnlink=${canUnlink} changeRelationship=${changeRelationship} handleLinkAction=${handleLinkAction}
                     search=${search} doSearch=${doSearch} isSearchActive=${isGlobalSearchActive} setIsSearchActive=${setIsGlobalSearchActive} searchResults=${globalSearchResults} selectedSearchIndex=${globalSearchIndex} setSelectedSearchIndex=${setGlobalSearchIndex} navSearch=${navSearch}
                     setIsAllNotesModalOpen=${setIsAllNotesModalOpen}
@@ -726,32 +734,6 @@
 
                 <${StatusBar} noteCount=${count} vaultName=${getCurrentVaultName()} version=${APP_VERSION} fontSize=${fs} onVaultClick=${() => setVaultChooser(p => !p)} activeNote=${activeNote} />
 
-                <${Editor} 
-                    isOpen=${isEditorOpen} mode=${edMode} note=${fSec==='center'?topo.center:getSortedNotes(fSec,topo,favs)[fIdx]} 
-                    onClose=${()=>setIsEditorOpen(false)} 
-                    onSave=${async (id, c) => {
-                        const WIKI_LINK_REGEX = /\[\[([^|\]\n]+)(?:\|[^\]\n]*)?\]\]/g;
-                        const outgoingLinkIds = new Set();
-                        let match;
-                        const allNotes = await getAllNotes();
-                        const titleToIdMap = new Map(allNotes.map(note => [note.title.toLowerCase(), note.id]));
-                        WIKI_LINK_REGEX.lastIndex = 0;
-                        while ((match = WIKI_LINK_REGEX.exec(c)) !== null) {
-                            const linkTitle = match[1].trim().toLowerCase();
-                            if (titleToIdMap.has(linkTitle)) {
-                                outgoingLinkIds.add(titleToIdMap.get(linkTitle));
-                            }
-                        }
-                        // Use a transaction to ensure getTopology reads the updated data
-                        await db.transaction('rw', db.notes, async () => {
-                            await updateNote(id, { content: c, outgoingLinks: Array.from(outgoingLinkIds) });
-                            if (id === currentId) {
-                                await getTopology(currentId).then(setTopo);
-                            }
-                        });
-                    }}
-                    onLink=${async(t)=>{const n=await findNoteByTitle(t);if(n)nav(n.id)}} 
-                />
                 <${VaultChooser} 
                     isOpen=${vaultChooser} 
                     onClose=${() => setVaultChooser(false)} 
