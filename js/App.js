@@ -17,7 +17,7 @@
     };
 
     const { useState, useEffect, useRef, useCallback, useMemo } = React;
-    const { db, getTopology, createNote, updateNote, deleteNote, getFavorites, toggleFavorite, seedDatabase, getNote, getAllNotes, importNotes, getHomeNoteId, searchNotes, getFontSize, getNoteCount, getVaultList, getCurrentVaultName, switchVault, getSectionVisibility, findNoteByTitle, getNoteTitlesByPrefix, getActiveThemeId, getTheme, setActiveThemeId, getThemes, getAttachmentAliases, getSplitRatio, setSplitRatio: dbSetSplitRatio } = J.Services.DB;
+    const { db, getTopology, createNote, updateNote, deleteNote, getFavorites, toggleFavorite, seedDatabase, getNote, getAllNotes, importNotes, getHomeNoteId, searchNotes, searchContent, getFontSize, getNoteCount, getVaultList, getCurrentVaultName, switchVault, getSectionVisibility, findNoteByTitle, getNoteTitlesByPrefix, getActiveThemeId, getTheme, setActiveThemeId, getThemes, getAttachmentAliases, getSplitRatio, setSplitRatio: dbSetSplitRatio } = J.Services.DB;
     const { goToDate, goToToday, getDateSubtitle } = J.Services.Journal; 
     const { createRenderer, wikiLinkExtension, setAttachmentAliases } = J.Services.Markdown;
     const { NoteCard, LinkerModal, Editor, SettingsModal, ImportModal, RenameModal, NoteSection, TopBar, StatusBar, Icons, AllNotesModal, ContentSearchModal, VaultChooser, MentionsModal, APP_VERSION } = J;
@@ -771,7 +771,41 @@
                     setAttachmentAliases(await getAttachmentAliases());
                 }} initialTab=${isSettingsOpen.initialTab} focusOn=${isSettingsOpen.focusOn} />
                 <${ImportModal} isOpen=${isImportModalOpen} importData=${importData} onClose=${()=>setIsImportModalOpen(false)} onConfirm=${async m=>{await importNotes(importData,m);setIsImportModalOpen(false);window.location.reload()}} />
-                <${RenameModal} isOpen=${isRenameModalOpen} currentTitle=${noteToRename?noteToRename.title:''} onClose=${()=>setIsRenameModalOpen(false)} onRename=${t=>{updateNote(noteToRename.id,{title:t});setIsRenameModalOpen(false);getTopology(currentId).then(setTopo);}} />
+                <${RenameModal} 
+                    isOpen=${isRenameModalOpen} 
+                    currentTitle=${noteToRename?noteToRename.title:''} 
+                    onClose=${()=>setIsRenameModalOpen(false)} 
+                    onRename=${async (t)=>{
+                        if (!noteToRename) return;
+                        const oldTitle = noteToRename.title;
+                        const newTitle = t;
+                        const noteId = noteToRename.id;
+
+                        await updateNote(noteId, { title: newTitle });
+
+                        // Use searchContent to find notes referencing the old title
+                        // We search for the wiki link syntax to narrow it down
+                        const searchResults = await searchContent(`[[${oldTitle}`);
+                        
+                        const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        const regex = new RegExp(`\\[\\[(${escapeRegExp(oldTitle)})(\\|.*?)?\\]\\]`, 'gi');
+
+                        for (const result of searchResults) {
+                            const note = await getNote(result.id);
+                            if (!note || !note.content) continue;
+
+                            if (isEditing && activeNote && note.id === activeNote.id) {
+                                setEditContent(prev => prev.replace(regex, (match, p1, p2) => `[[${newTitle}${p2 || ''}]]`));
+                            } else {
+                                const newContent = note.content.replace(regex, (match, p1, p2) => `[[${newTitle}${p2 || ''}]]`);
+                                if (newContent !== note.content) await updateNote(note.id, { content: newContent });
+                            }
+                        }
+
+                        setIsRenameModalOpen(false);
+                        getTopology(currentId).then(setTopo);
+                    }} 
+                />
                 <${AllNotesModal} isOpen=${isAllNotesModalOpen} onClose=${()=>setIsAllNotesModalOpen(false)} onSelect=${id=>{setIsAllNotesModalOpen(false);nav(id);}} />
                 <${MentionsModal} isOpen=${isMentionsModalOpen} onClose=${()=>setIsMentionsModalOpen(false)} onSelect=${(id, term)=>{
                     setIsMentionsModalOpen(false);
