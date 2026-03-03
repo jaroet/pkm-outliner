@@ -1,6 +1,10 @@
 # Changelog
 
-## [0.7.1] - Current Release
+## [0.7.2] - Current Release
+### Maintenance
+- Version bump and general improvements.
+
+## [0.7.1] - Previous Release
 ### Added
 - **Mentions**: Added a "Mentions" button in the top bar to show all notes linking to the current note.
 - **Context Highlighting**: Navigating from the Mentions list highlights the reference in the target note.
