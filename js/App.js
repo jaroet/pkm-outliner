@@ -653,11 +653,11 @@
                             <div className="flex-1 min-h-[200px]" onClick=${() => setFSec('center')}></div>
                         </div>
 
-                        ${vis.showFavorites && favs.length > 0 && html`
+                        ${vis.showFavorites && html`
                             <div style=${{ borderColor: 'color-mix(in srgb, var(--primary) 20%, transparent)' }} className="flex-shrink-0 p-3 border-t bg-gray-50/50 dark:bg-gray-900/30 backdrop-blur-sm">
                                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">Favorites</div>
                                 <div className="flex flex-wrap gap-2">
-                                    ${favs.map(f => html`
+                                    ${favs.length > 0 ? favs.map(f => html`
                                         <button 
                                             key=${f.id}
                                             onClick=${(e) => { e.stopPropagation(); nav(f.id); }}
@@ -671,7 +671,7 @@
                                         >
                                             ${f.title}
                                         </button>
-                                    `)}
+                                    `) : html`<span className="text-xs text-gray-400 px-1 italic">No favorites</span>`}
                                 </div>
                             </div>
                         `}

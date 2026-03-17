@@ -234,7 +234,10 @@
     
     const getFavoritesNoteId = async () => {
         let meta = await db.meta.get('favoritesNoteId');
-        if (meta) return meta.value;
+        if (meta) {
+            const exists = await db.notes.get(meta.value);
+            if (exists) return meta.value;
+        }
         let note = await findNoteByTitle('Favorites');
         if (!note) {
             note = await createNote('Favorites');
