@@ -1,5 +1,14 @@
-# Changelog
+---
+layout: page
+title: Changelog
+permalink: /changelog/
+---
 
+# Release History
+
+Dit overzicht wordt automatisch bijgewerkt bij elke nieuwe release.
+
+---
 ## [0.7.2] - Current Release
 ### Maintenance
 - Version bump and general improvements.
