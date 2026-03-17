@@ -1,4 +1,4 @@
 title: "Welcome by pkm-outliner"
 description: "Documentation and changelog"
-remote_theme: just-the-docs/just-the-docs
+theme: jekyll-theme-hacker
 baseurl: "" # Laat dit leeg als je een custom domein hebt of repo-naam.github.io gebruikt
