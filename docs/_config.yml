@@ -1,0 +1,4 @@
+title: "Mijn Project Portal"
+description: "Documentatie en Changelog"
+theme: minima
+baseurl: "" # Laat dit leeg als je een custom domein hebt of repo-naam.github.io gebruikt
