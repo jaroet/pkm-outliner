@@ -9,7 +9,14 @@ permalink: /changelog/
 Dit overzicht wordt automatisch bijgewerkt bij elke nieuwe release.
 
 ---
-## [0.7.2] - Current Release
+## [0.7.3] - Current Release
+### Maintenance
+- Added: an automated website update when release is created. 
+- Added: a context.md to bring the AI uptodate with the current status of the project. 
+- Updated: the readme.md is now giving a full explanation of the app. 
+- Fixed: the presentation of favorites on Windows 11 was not correct. 
+
+## [0.7.2] - Previous Release
 ### Maintenance
 - Version bump and general improvements.
 
