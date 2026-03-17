@@ -43,11 +43,13 @@
 
         // Resizable Pane State
         const [splitRatio, setSplitRatio] = useState(0.5);
+        const splitRatioLoaded = useRef(false);
         const isDragging = useRef(false);
         const containerRef = useRef(null);
 
         const handleMouseDown = (e) => {
             isDragging.current = true;
+            splitRatioLoaded.current = true;
             document.body.style.cursor = 'col-resize';
             document.body.style.userSelect = 'none';
         };
@@ -139,7 +141,10 @@
                 getFontSize().then(setFs);
                 getSectionVisibility().then(setVis);
                 getFavorites().then(setFavs);
-                getSplitRatio().then(setSplitRatio);
+                getSplitRatio().then(v => { 
+                    setSplitRatio(v); 
+                    splitRatioLoaded.current = true; 
+                });
                 getThemes().then(setThemes);
                 getAttachmentAliases().then(a => {
                     setAttachmentAliases(a);
@@ -238,6 +243,7 @@
 
         // Persist split ratio
         useEffect(() => {
+            if (!splitRatioLoaded.current) return;
             const t = setTimeout(() => dbSetSplitRatio(splitRatio), 200);
             return () => clearTimeout(t);
         }, [splitRatio]);

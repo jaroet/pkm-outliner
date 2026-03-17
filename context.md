@@ -4,7 +4,7 @@ This file provides a persistent context for AI assistants to understand the proj
 
 ## 1. Project Goal
 
-The project is a **client-side Personal Knowledge Management (PKM) outliner**. It's designed as a fast, keyboard-driven tool for structuring thoughts and building a personal wiki. The core workflow is centered around a "Central Note" and its parent/child relationships. It needs to be 'installable' without any dependencies.  
+The project is a **client-side Personal Knowledge Management (PKM) outliner**. It's designed as a fast, keyboard-driven tool for structuring thoughts and building a personal wiki. The core workflow is centered around a "Central Note" and its parent/child and mentions relationships. It needs to be 'installable' without any dependencies.  
 
 ## 2. Core Technologies
 
@@ -28,4 +28,5 @@ The project is a **client-side Personal Knowledge Management (PKM) outliner**. I
 *   Before providing assistance, review this file to understand the project's architecture and goals.
 *   Recognize that this is a **client-side only** application. There is no backend server component.
 *   When suggesting changes, respect the existing technology stack (vanilla JS, htm, Dexie.js).
-*   Keep the communication simple and clear as possible without leaving things out for clarity/simplicity. Keep a professional tone. 
+*   Keep the communication simple and as clear as possible without leaving things out for clarity/simplicity. A little bit of technical language, if really needed, is not a problem. But I am not a developer. 
+*   Keep a professional tone. 
