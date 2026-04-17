@@ -89,6 +89,7 @@
         const favsRef=useRef([]);
         const visRef=useRef({showFavorites:true});
         const secIndRef=useRef({up:0,down:0,favs:0});
+        const contentSourceRef = useRef(null);
         const isEditingRef=useRef(false);
 
         // UI State & Modals (removed `menu` and `setMenu`)
@@ -208,6 +209,7 @@
         useEffect(()=>{visRef.current=vis},[vis]);
         useEffect(()=>{secIndRef.current=secInd},[secInd]);
         useEffect(()=>{isEditingRef.current=isEditing},[isEditing]);
+        useEffect(()=>{contentSourceRef.current=contentSource},[contentSource]);
 
         useEffect(() => {
             if (activeNote) {
@@ -338,7 +340,12 @@
                 setFSec('content');
                 setIsEditing(true);
             } else {
-                setIsEditing(p => !p);
+                if (isEditing) {
+                    setIsEditing(false);
+                    if (contentSource) setFSec(contentSource);
+                } else {
+                    setIsEditing(true);
+                }
             }
         };
 
@@ -444,7 +451,7 @@
 
         // --- KEYBOARD HANDLER ---
         const handleGlobalKeyDown = useCallback(async (e) => {
-            const selState=selRef.current, fSecState=fSecRef.current, fIdxState=fIdxRef.current, topoState=topoRef.current, favsState=favsRef.current, secIndState=secIndRef.current, isEditingState=isEditingRef.current;
+            const selState=selRef.current, fSecState=fSecRef.current, fIdxState=fIdxRef.current, topoState=topoRef.current, favsState=favsRef.current, secIndState=secIndRef.current, isEditingState=isEditingRef.current, contentSourceState=contentSourceRef.current;
             if (isRenameModalOpen||isLinkerModalOpen||isSettingsOpen||isImportModalOpen||isCalendarOpen||isAllNotesModalOpen||isMentionsModalOpen||vaultChooser||contentSearch) { if (e.key === 'Escape') { if(isCalendarOpen) setIsCalendarOpen(false); if(isAllNotesModalOpen) setIsAllNotesModalOpen(false); if(isMentionsModalOpen) setIsMentionsModalOpen(false); if(vaultChooser) setVaultChooser(false); if(contentSearch) setContentSearch(false); } return; }
             if (isGlobalSearchActive) {
                 if (e.key==='Escape') { setIsGlobalSearchActive(false); setFSec('center'); e.preventDefault(); return; }
@@ -512,7 +519,12 @@
                     setFSec('content');
                     setIsEditing(true);
                 } else {
-                    setIsEditing(p => !p);
+                    if (isEditingState) {
+                        setIsEditing(false);
+                        if (contentSourceState) setFSec(contentSourceState);
+                    } else {
+                        setIsEditing(true);
+                    }
                 }
                 return;
             }
