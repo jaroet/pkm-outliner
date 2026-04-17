@@ -16,7 +16,7 @@
                     onClick=${e => e.stopPropagation()}
                 >
                     <button onClick=${onManage} className="w-full px-3 py-2 hover:bg-primary/10 flex items-center gap-2 text-sm font-semibold text-primary border-b border-gray-100 dark:border-gray-800">
-                        <${Icons.Settings} width="16" height="16" />
+                        <${Icons.Settings} width="20" height="20" />
                         <span>Manage Vaults...</span>
                     </button>
                     <div className="max-h-60 overflow-y-auto custom-scrollbar">

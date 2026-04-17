@@ -106,7 +106,7 @@
                                         className=${`flex items-center justify-between px-3 py-2 text-xs cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 ${currentSort === k ? 'font-bold text-primary' : ''}`}
                                     >
                                         <span>${v}</span>
-                                        ${currentSort === k && html`<${Icons.Check} width="16" height="16" />`}
+                                        ${currentSort === k && html`<${Icons.Check} width="20" height="20" />`}
                                     </div>
                                 `)}
                             </div>
@@ -135,7 +135,7 @@
 
                 <div className="relative flex-1 min-w-[150px]">
                     <div className="absolute left-2 top-1/2 -translate-y-1/2 opacity-50 pointer-events-none" style=${{color:'var(--theme-accent)'}}>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                     </div>
                     <input 
                         ref=${searchRef} 

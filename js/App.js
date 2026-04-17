@@ -632,8 +632,8 @@
                                         subtitle=${subT}
                                     />
                                     <div className="flex gap-1 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-1/2 -translate-y-1/2">
-                                        ${topo.center.isFavorite&&html`<${Icons.Star} width="14" height="14" fill="currentColor" />`}
-                                        ${topo.center.content&&html`<${Icons.Edit} width="14" height="14" fill="currentColor" />`}
+                                        ${topo.center.isFavorite&&html`<${Icons.Star} width="18" height="18" fill="currentColor" />`}
+                                        ${topo.center.content&&html`<${Icons.Edit} width="18" height="18" fill="currentColor" />`}
                                     </div>
                                 `}
                             </div>

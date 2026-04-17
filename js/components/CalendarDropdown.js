@@ -19,9 +19,9 @@
         return html` 
             <div ref=${dropdownRef} className="absolute top-full left-0 mt-2 w-72 bg-card border shadow-xl rounded-lg z-50 p-4" onClick=${e=>e.stopPropagation()}>
                 <div className="flex justify-between mb-4">
-                    <button onClick=${()=>changeMonth(-1)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"><${Icons.ChevronLeft} width="16" height="16" /></button>
+                    <button onClick=${()=>changeMonth(-1)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"><${Icons.ChevronLeft} width="20" height="20" /></button>
                     <span>${viewDate.toLocaleString('default',{month:'long',year:'numeric'})}</span>
-                    <button onClick=${()=>changeMonth(1)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"><${Icons.ChevronRight} width="16" height="16" /></button>
+                    <button onClick=${()=>changeMonth(1)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"><${Icons.ChevronRight} width="20" height="20" /></button>
                 </div>
                 <div className="grid grid-cols-7 text-center text-xs mb-2"><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div><div>Su</div></div>
                 <div className="grid grid-cols-7 gap-1 text-center">${days}</div>

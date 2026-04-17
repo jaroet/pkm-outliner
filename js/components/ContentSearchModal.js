@@ -85,7 +85,7 @@
                                         onClick=${() => { setQuery(''); inputRef.current?.focus(); }} 
                                         className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1"
                                     >
-                                        <${J.Icons.Close} className="w-4 h-4" />
+                                        <${J.Icons.Close} className="w-5 h-5" />
                                     </button>
                                 `}
                             </div>
