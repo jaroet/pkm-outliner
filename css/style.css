@@ -59,12 +59,22 @@ body {
 
 /* Compact Markdown Styles */
 .compact-markdown ul, .compact-markdown ol {
-  margin-top: 0.25em !important;
-  margin-bottom: 0.25em !important;
+  margin-top: 0.15em !important;
+  margin-bottom: 0.15em !important;
+  padding-left: 1.25em !important;
 }
 .compact-markdown li {
   margin-top: 0 !important;
   margin-bottom: 0 !important;
+}
+.compact-markdown p {
+  margin-top: 0.25em !important;
+  margin-bottom: 0.25em !important;
+}
+.prose :where(h1, h2, h3, h4, h5, h6) {
+  margin-top: 0.75em !important;
+  margin-bottom: 0.3em !important;
+  font-weight: bold !important;
 }
 .compact-markdown li > p {
   margin-top: 0 !important;
@@ -74,3 +84,11 @@ body {
   list-style-type: none;
   padding-left: 0;
 }
+
+/* Dynamische kopkleuren gebaseerd op de thema primary kleur */
+.prose h1 { color: var(--primary) !important; font-weight: 800 !important; }
+.prose h2 { color: color-mix(in srgb, var(--primary) 85%, var(--foreground)) !important; font-weight: 700 !important; }
+.prose h3 { color: color-mix(in srgb, var(--primary) 70%, var(--foreground)) !important; font-weight: 700 !important; }
+.prose h4 { color: color-mix(in srgb, var(--primary) 55%, var(--foreground)) !important; font-weight: 600 !important; }
+.prose h5 { color: color-mix(in srgb, var(--primary) 40%, var(--foreground)) !important; font-weight: 600 !important; }
+.prose h6 { color: color-mix(in srgb, var(--primary) 25%, var(--foreground)) !important; font-weight: 600 !important; }
