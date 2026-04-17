@@ -18,6 +18,7 @@
                 onClick=${onFocus}
             >
                 <div 
+                    style=${{ fontSize: `${fontSize}px` }}
                     className="absolute inset-0 p-6 overflow-auto custom-scrollbar prose dark:prose-invert max-w-none rounded-b-3xl compact-markdown" 
                     onClick=${handleClick} 
                     dangerouslySetInnerHTML=${{ __html: previewHtml }} />

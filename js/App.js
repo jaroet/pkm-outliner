@@ -1,21 +1,5 @@
 
 (function(J) {
-    // Helper to get caret coordinates for autocomplete popup
-    const getCaretCoordinates = (element, position) => {
-        const div = document.createElement('div');
-        const style = window.getComputedStyle(element);
-        Array.from(style).forEach(prop => div.style.setProperty(prop, style.getPropertyValue(prop)));
-        div.style.position = 'absolute'; div.style.visibility = 'hidden'; div.style.whiteSpace = 'pre-wrap';
-        div.style.top = '0'; div.style.left = '0';
-        div.textContent = element.value.substring(0, position);
-        const span = document.createElement('span'); span.textContent = element.value.substring(position) || '.';
-        div.appendChild(span);
-        document.body.appendChild(div);
-        const coordinates = { top: span.offsetTop + parseInt(style.borderTopWidth), left: span.offsetLeft + parseInt(style.borderLeftWidth), height: parseInt(style.lineHeight) };
-        document.body.removeChild(div);
-        return coordinates;
-    };
-
     const { useState, useEffect, useRef, useCallback, useMemo } = React;
     const { db, getTopology, createNote, updateNote, deleteNote, getFavorites, toggleFavorite, seedDatabase, getNote, getAllNotes, importNotes, getHomeNoteId, searchNotes, searchContent, getFontSize, getNoteCount, getVaultList, getCurrentVaultName, switchVault, getSectionVisibility, findNoteByTitle, getNoteTitlesByPrefix, getActiveThemeId, getTheme, setActiveThemeId, getThemes, getAttachmentAliases, getSplitRatio, setSplitRatio: dbSetSplitRatio } = J.Services.DB;
     const { goToDate, goToToday, getDateSubtitle } = J.Services.Journal; 
@@ -273,7 +257,7 @@
                     setTriggerIndex(lo);
                     setAutocompleteQuery(tb);
                     setShowAutocomplete(true);
-                    const coords = getCaretCoordinates(e.target, lo);
+                    const coords = J.Utils.getCaretCoordinates(e.target, lo);
                     setCaretPos({ top: coords.top - e.target.scrollTop, left: coords.left - e.target.scrollLeft });
                 }
             } else {
@@ -742,7 +726,8 @@
                             ${fSec === 'content' && isEditing && activeNote ? html`
                                 <textarea
                                     ref=${textareaRef}
-                                    className="w-full h-full bg-transparent resize-none outline-none font-mono custom-scrollbar p-8"
+                                style=${{ fontSize: `${fs}px` }}
+                                className="w-full h-full bg-transparent resize-none outline-none font-mono custom-scrollbar p-6"
                                     value=${editContent}
                                     onChange=${handleContentChange}
                                     onKeyDown=${(e) => {
