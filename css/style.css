@@ -68,8 +68,9 @@ body {
   margin-bottom: 0 !important;
 }
 .compact-markdown p {
-  margin-top: 0.25em !important;
-  margin-bottom: 0.25em !important;
+  margin-top: 0.8em !important;
+  margin-bottom: 0.8em !important;
+  line-height: 1.4 !important;
 }
 .prose :where(h1, h2, h3, h4, h5, h6) {
   margin-top: 0.75em !important;
