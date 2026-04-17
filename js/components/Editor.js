@@ -20,7 +20,7 @@
         return coordinates;
     };
 
-    J.Editor = ({note, isOpen, mode, onClose, onSave, onLink}) => {
+    J.Editor = ({note, isOpen, mode, onClose, onSave, onLink, fontSize = 16}) => {
         const [content, setContent] = useState('');
         const [htmlContent, setHtmlContent] = useState('');
         const [isPreview, setIsPreview] = useState(mode === 'view');
@@ -283,10 +283,10 @@
                     </div>
                     <div className="flex-1 overflow-hidden relative bg-background/50">
                         ${isPreview?html`
-                            <div ref=${previewRef} tabIndex=${0} onClick=${handlePreviewClick} style=${{fontSize:'15px'}} className="w-full h-full p-6 overflow-auto prose dark:prose-invert max-w-none custom-scrollbar select-text outline-none compact-markdown" dangerouslySetInnerHTML=${{__html:htmlContent}} />
+                            <div ref=${previewRef} tabIndex=${0} onClick=${handlePreviewClick} style=${{fontSize: `${fontSize}px`}} className="w-full h-full p-6 overflow-auto prose dark:prose-invert max-w-none custom-scrollbar select-text outline-none compact-markdown" dangerouslySetInnerHTML=${{__html:htmlContent}} />
                         `:html`
                             <div className="relative w-full h-full">
-                                <textarea ref=${textareaRef} value=${content} onChange=${handleChange} style=${{fontSize:'15px'}} className="w-full h-full p-6 bg-transparent resize-none outline-none font-mono custom-scrollbar" placeholder="Type markdown here... Use [[ to link." />
+                                <textarea ref=${textareaRef} value=${content} onChange=${handleChange} style=${{fontSize: `${fontSize}px`}} className="w-full h-full p-6 bg-transparent resize-none outline-none font-mono custom-scrollbar" placeholder="Type markdown here... Use [[ to link." />
                                 ${showSuggestions&&html`
                                     <div ref=${(el) => { autocompleteDropdownRef.current = el; sugListRef.current = el; }} className="absolute z-50 w-64 bg-card border border-gray-200 dark:border-gray-700 shadow-xl rounded-md max-h-60 overflow-y-auto custom-scrollbar" style=${{top:caretPos.top+30,left:caretPos.left+24}}>
                                         ${searchResults.length===0?html`<div className="p-2 text-xs text-gray-500 italic">No matching notes</div>`

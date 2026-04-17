@@ -726,7 +726,7 @@
                             ${fSec === 'content' && isEditing && activeNote ? html`
                                 <textarea
                                     ref=${textareaRef}
-                                style=${{ fontSize: `${fs}px` }}
+                                style=${{ fontSize: `${fs * 0.95}px` }}
                                 className="w-full h-full bg-transparent resize-none outline-none font-mono custom-scrollbar p-6"
                                     value=${editContent}
                                     onChange=${handleContentChange}
@@ -762,6 +762,7 @@
                                 <div 
                                     ref=${previewRef}
                                     tabIndex=${0}
+                                    style=${{ fontSize: `${fs}px` }}
                                     className=${`w-full h-full overflow-y-auto custom-scrollbar p-8 prose dark:prose-invert max-w-none compact-markdown transition-all duration-200 outline-none ${fSec==='content' ? 'ring-2 ring-primary/10 rounded-lg' : ''}`} 
                                     dangerouslySetInnerHTML=${{ __html: prevH || '<span class="text-gray-400 italic">No content</span>' }}
                                     onClick=${async (e) => {
