@@ -281,23 +281,60 @@
             }
         };
 
-        const insertLink = (title) => {
-            const b = editContent.slice(0, triggerIndex);
-            const a = editContent.slice(textareaRef.current.selectionEnd);
-            const n = `${b}[[${title}]]${a}`;
-            setEditContent(n);
-            setShowAutocomplete(false);
-            setTimeout(() => {
-                if (textareaRef.current) {
-                    textareaRef.current.focus();
-                    const p = triggerIndex + 2 + title.length + 2;
-                    textareaRef.current.setSelectionRange(p, p);
+        const handleSelectAutocomplete = async (index) => {
+            const query = autocompleteQuery.trim();
+            let targetTitle = '';
+            let newNoteId = null;
+
+            if (index < autocompleteResults.length) {
+                // Bestaande note selecteren
+                targetTitle = autocompleteResults[index].title;
+            } else if (query) {
+                // Nieuwe note aanmaken
+                const isChild = index === autocompleteResults.length;
+                const newNote = await createNote(query);
+                newNoteId = newNote.id;
+                targetTitle = newNote.title;
+
+                // Relatie leggen
+                if (isChild) {
+                    const currentNote = await getNote(currentId);
+                    await updateNote(currentId, { linksTo: [...(currentNote.linksTo || []), newNoteId] });
+                } else {
+                    await updateNote(newNoteId, { linksTo: [currentId] });
                 }
-            }, 50);
+            } else {
+                return;
+            }
+
+            // Link tekst invoegen in de huidige editor
+            const before = editContent.slice(0, triggerIndex);
+            const after = editContent.slice(textareaRef.current.selectionEnd);
+            const updatedContent = `${before}[[${targetTitle}]]${after}`;
+            setEditContent(updatedContent);
+            setShowAutocomplete(false);
+
+            if (newNoteId) {
+                // Bij aanmaak: opslaan en navigeren
+                await saveContent(updatedContent);
+                nav(newNoteId);
+            } else {
+                // Bij bestaande note: focus terug naar editor
+                setTimeout(() => {
+                    if (textareaRef.current) {
+                        textareaRef.current.focus();
+                        const p = triggerIndex + 2 + targetTitle.length + 2;
+                        textareaRef.current.setSelectionRange(p, p);
+                    }
+                }, 50);
+            }
         };
 
         const { activeIndex: selectedSuggestionIndex, setActiveIndex: setSelectedSuggestionIndex, listRef: sugListRef, handleKeyDown: handleAutocompleteKeyDown } = useListNavigation({
-            isOpen: showAutocomplete, itemCount: autocompleteResults.length, onEnter: (index) => { if (autocompleteResults[index]) insertLink(autocompleteResults[index].title); }, onEscape: () => setShowAutocomplete(false)
+            isOpen: showAutocomplete, 
+            itemCount: autocompleteResults.length + (autocompleteQuery.trim() ? 2 : 0), 
+            onEnter: handleSelectAutocomplete, 
+            onEscape: () => setShowAutocomplete(false)
         });
         const autocompleteDropdownRef = useClickOutside(showAutocomplete, useCallback(() => setShowAutocomplete(false), []));
 
@@ -722,10 +759,18 @@
                                     <div ref=${(el) => { autocompleteDropdownRef.current = el; sugListRef.current = el; }} className="absolute z-50 w-64 bg-card border border-gray-200 dark:border-gray-700 shadow-xl rounded-md max-h-60 overflow-y-auto custom-scrollbar" style=${{top:caretPos.top+30,left:caretPos.left+24}}>
                                         ${autocompleteResults.length===0?html`<div className="p-2 text-xs text-gray-500 italic">No matching notes</div>`
                                         :autocompleteResults.map((s,i)=>html`
-                                            <div key=${s.id} onClick=${()=>insertLink(s.title)} onMouseEnter=${() => setSelectedSuggestionIndex(i)} className=${`px-3 py-2 text-sm cursor-pointer ${i===selectedSuggestionIndex?'bg-primary text-primary-foreground':'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
+                                            <div key=${s.id} onClick=${()=>handleSelectAutocomplete(i)} onMouseEnter=${() => setSelectedSuggestionIndex(i)} className=${`px-3 py-2 text-sm cursor-pointer ${i===selectedSuggestionIndex?'bg-primary text-primary-foreground':'hover:bg-black/5 dark:hover:bg-white/10'}`}>
                                                 ${s.title}
                                             </div>
                                         `)}
+                                        ${autocompleteQuery.trim() && html`
+                                            <div onClick=${() => handleSelectAutocomplete(autocompleteResults.length)} onMouseEnter=${() => setSelectedSuggestionIndex(autocompleteResults.length)} className=${`px-3 py-2 text-sm cursor-pointer border-t dark:border-gray-700 ${selectedSuggestionIndex === autocompleteResults.length ? 'bg-primary text-primary-foreground' : 'hover:bg-black/5 dark:hover:bg-white/10'}`}>
+                                                <span className="opacity-50 mr-2">+</span> Create "${autocompleteQuery}" as Child
+                                            </div>
+                                            <div onClick=${() => handleSelectAutocomplete(autocompleteResults.length + 1)} onMouseEnter=${() => setSelectedSuggestionIndex(autocompleteResults.length + 1)} className=${`px-3 py-2 text-sm cursor-pointer ${selectedSuggestionIndex === autocompleteResults.length + 1 ? 'bg-primary text-primary-foreground' : 'hover:bg-black/5 dark:hover:bg-white/10'}`}>
+                                                <span className="opacity-50 mr-2">+</span> Create "${autocompleteQuery}" as Parent
+                                            </div>
+                                        `}
                                     </div>
                                 `}
                             ` : activeNote ? html`

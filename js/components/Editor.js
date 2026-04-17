@@ -1,7 +1,7 @@
 
 (function(J) {
     const { useState, useEffect, useRef, useCallback } = React;
-    const { searchNotes } = J.Services.DB;
+    const { searchNotes, createNote, updateNote, getNote } = J.Services.DB;
     const { createRenderer } = J.Services.Markdown;
 
     // Helper to get caret coordinates for autocomplete popup
@@ -291,10 +291,18 @@
                                     <div ref=${(el) => { autocompleteDropdownRef.current = el; sugListRef.current = el; }} className="absolute z-50 w-64 bg-card border border-gray-200 dark:border-gray-700 shadow-xl rounded-md max-h-60 overflow-y-auto custom-scrollbar" style=${{top:caretPos.top+30,left:caretPos.left+24}}>
                                         ${searchResults.length===0?html`<div className="p-2 text-xs text-gray-500 italic">No matching notes</div>`
                                         :searchResults.map((s,i)=>html`
-                                            <div key=${s.id} onClick=${()=>ins(s.title)} onMouseEnter=${() => setSelectedSuggestionIndex(i)} className=${`px-3 py-2 text-sm cursor-pointer ${i===selectedSuggestionIndex?'bg-primary text-primary-foreground':'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
+                                            <div key=${s.id} onClick=${()=>handleSelectAutocomplete(i)} onMouseEnter=${() => setSelectedSuggestionIndex(i)} className=${`px-3 py-2 text-sm cursor-pointer ${i===selectedSuggestionIndex?'bg-primary text-primary-foreground':'hover:bg-black/5 dark:hover:bg-white/10'}`}>
                                                 ${s.title}
                                             </div>
                                         `)}
+                                        ${searchQuery.trim() && html`
+                                            <div onClick=${() => handleSelectAutocomplete(searchResults.length)} onMouseEnter=${() => setSelectedSuggestionIndex(searchResults.length)} className=${`px-3 py-2 text-sm cursor-pointer border-t dark:border-gray-700 ${selectedSuggestionIndex === searchResults.length ? 'bg-primary text-primary-foreground' : 'hover:bg-black/5 dark:hover:bg-white/10'}`}>
+                                                <span className="opacity-50 mr-2">+</span> Create "${searchQuery}" as Child
+                                            </div>
+                                            <div onClick=${() => handleSelectAutocomplete(searchResults.length + 1)} onMouseEnter=${() => setSelectedSuggestionIndex(searchResults.length + 1)} className=${`px-3 py-2 text-sm cursor-pointer ${selectedSuggestionIndex === searchResults.length + 1 ? 'bg-primary text-primary-foreground' : 'hover:bg-black/5 dark:hover:bg-white/10'}`}>
+                                                <span className="opacity-50 mr-2">+</span> Create "${searchQuery}" as Parent
+                                            </div>
+                                        `}
                                     </div>
                                 `}
                             </div>
