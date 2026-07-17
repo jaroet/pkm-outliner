@@ -3,18 +3,51 @@
     const { useState, useEffect, useCallback } = React;
     const { Icons } = J;
 
-    J.CalendarDropdown = ({isOpen, onClose, onSelectDate, existingDates, onMonthChange}) => {
-        const [viewDate,setViewDate]=useState(new Date());
-        useEffect(()=>{if(isOpen){setViewDate(new Date());onMonthChange(new Date().getFullYear(),new Date().getMonth()+1);}},[isOpen]);
-        const changeMonth=(offset)=>{const d=new Date(viewDate.getFullYear(),viewDate.getMonth()+offset,1);setViewDate(d);onMonthChange(d.getFullYear(),d.getMonth()+1);};
-        
+    J.CalendarDropdown = ({ isOpen, onClose, onSelectDate, existingDates, onMonthChange }) => {
+        const [viewDate, setViewDate] = useState(new Date());
         const { useClickOutside } = J.Hooks;
         const dropdownRef = useClickOutside(isOpen, useCallback(() => onClose(), []));
 
-        const daysInMonth=new Date(viewDate.getFullYear(),viewDate.getMonth()+1,0).getDate();
-        const startDay=(new Date(viewDate.getFullYear(),viewDate.getMonth(),1).getDay()+6)%7;
-        const days=[];for(let i=0;i<startDay;i++)days.push(html`<div key=${`e-${i}`} className="h-9"></div>`);
-        for(let d=1;d<=daysInMonth;d++){const dateStr=`${viewDate.getFullYear()}-${String(viewDate.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;const has=existingDates.has(dateStr);const isToday=new Date().toDateString()===new Date(viewDate.getFullYear(),viewDate.getMonth(),d).toDateString();days.push(html`<div key=${d} onClick=${()=>onSelectDate(new Date(viewDate.getFullYear(),viewDate.getMonth(),d))} className=${`h-9 w-9 flex items-center justify-center rounded-lg cursor-pointer relative ${isToday?'text-primary font-bold':'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>${d}${has&&html`<div className="absolute bottom-1 w-5 h-0.5 rounded-full bg-primary"></div>`}</div>`);}
+        // Reset to current month when dropdown opens
+        useEffect(() => {
+            if (isOpen) {
+                const today = new Date();
+                setViewDate(today);
+                onMonthChange(today.getFullYear(), today.getMonth() + 1);
+            }
+        }, [isOpen]);
+
+        const changeMonth = (offset) => {
+            const newDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + offset, 1);
+            setViewDate(newDate);
+            onMonthChange(newDate.getFullYear(), newDate.getMonth() + 1);
+        };
+
+        // --- Render Calendar Grid ---
+        const daysInMonth = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0).getDate();
+        const startDay = (new Date(viewDate.getFullYear(), viewDate.getMonth(), 1).getDay() + 6) % 7; // 0 = Monday
+        const days = [];
+
+        // Add empty divs for days before the 1st of the month
+        for (let i = 0; i < startDay; i++) {
+            days.push(html`<div key=${`e-${i}`} className="h-9"></div>`);
+        }
+
+        // Add day elements
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = `${viewDate.getFullYear()}-${String(viewDate.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const hasEntry = existingDates.has(dateStr);
+            const isToday = new Date().toDateString() === new Date(viewDate.getFullYear(), viewDate.getMonth(), d).toDateString();
+            const dateObj = new Date(viewDate.getFullYear(), viewDate.getMonth(), d);
+
+            days.push(html`
+                <div key=${d} onClick=${() => onSelectDate(dateObj)} className=${`h-9 w-9 flex items-center justify-center rounded-lg cursor-pointer relative ${isToday ? 'text-primary font-bold' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
+                    ${d}
+                    ${hasEntry && html`<div className="absolute bottom-1 w-5 h-0.5 rounded-full bg-primary"></div>`}
+                </div>
+            `);
+        }
+
         if(!isOpen)return null;
         return html` 
             <div ref=${dropdownRef} className="absolute top-full left-0 mt-2 w-72 bg-card border shadow-xl rounded-lg z-50 p-4" onClick=${e=>e.stopPropagation()}>

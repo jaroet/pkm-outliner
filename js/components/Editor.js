@@ -172,6 +172,12 @@
                 }
             }
 
+            // Prevent global backspace from firing when editor is open and not focused on a list
+            if (e.key === 'Backspace' && !showSuggestions) {
+                const val = textareaRef.current.value;
+                const start = textareaRef.current.selectionStart;
+                if (val.substring(0, start).lastIndexOf('\n') === -1) e.stopPropagation();
+            }
             if(e.key==='Escape'){e.preventDefault();onClose();return;}
             
             // Shift+Enter (Toggle Edit/View)

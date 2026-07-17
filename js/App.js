@@ -471,7 +471,7 @@
         const canUnlink = sel.size > 0 || ['up', 'down'].includes(fSec);
 
         // --- KEYBOARD HANDLER ---
-        const handleGlobalKeyDown = useCallback(async (e) => {
+        const handleGlobalKeyDown = useCallback(async (e) => { // This is still re-created on each render due to dependencies
             const selState=selRef.current, fSecState=fSecRef.current, fIdxState=fIdxRef.current, topoState=topoRef.current, favsState=favsRef.current, secIndState=secIndRef.current, isEditingState=isEditingRef.current, contentSourceState=contentSourceRef.current;
             if (isRenameModalOpen||isLinkerModalOpen||isSettingsOpen||isImportModalOpen||isCalendarOpen||isAllNotesModalOpen||isMentionsModalOpen||vaultChooser||contentSearch) { if (e.key === 'Escape') { if(isCalendarOpen) setIsCalendarOpen(false); if(isAllNotesModalOpen) setIsAllNotesModalOpen(false); if(isMentionsModalOpen) setIsMentionsModalOpen(false); if(vaultChooser) setVaultChooser(false); if(contentSearch) setContentSearch(false); } return; }
             if (isGlobalSearchActive) {
@@ -605,12 +605,12 @@
                     if (note) nav(note.id);
                 }
             }
-        }, [currentId, back, forward, globalSearchResults, globalSearchIndex, isGlobalSearchActive, isRenameModalOpen, isLinkerModalOpen, isSettingsOpen, isImportModalOpen, isCalendarOpen, goToRandomNote, contentSearch, contentSource]);
+        }, [isEditing, fSec, sel, currentId, back, forward, globalSearchResults, globalSearchIndex, isGlobalSearchActive, isRenameModalOpen, isLinkerModalOpen, isSettingsOpen, isImportModalOpen, isCalendarOpen, goToRandomNote, contentSearch, contentSource]);
 
         const handleKeyDownRef = useRef(handleGlobalKeyDown);
         useEffect(() => { handleKeyDownRef.current = handleGlobalKeyDown; }, [handleGlobalKeyDown]);
         useEffect(() => { const h=(e)=>handleKeyDownRef.current(e); window.addEventListener('keydown',h); return ()=>window.removeEventListener('keydown',h); }, []);
-
+        
         return html`
             <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground font-sans flex-col">
                 <${TopBar}

@@ -62,8 +62,7 @@ The application is built on a "Central Note" concept, allowing you to visualize 
 | `Ctrl` + `J` | Go to Today's Journal. |
 
 ## Recent Updates (v0.7.3)
-
-This version includes general maintenance and stability improvements. Recent feature additions include the **Mentions** view to see all backlinks to a note and context highlighting when navigating from a mention.
+This version includes general maintenance and stability improvements. Recent feature additions include the **Mentions** view to see all backlinks to a note and context highlighting when navigating from a mention. The version is now 0.8.0.
 
 ---
 *This README was generated based on the project's documentation.*

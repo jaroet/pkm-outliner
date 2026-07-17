@@ -15,14 +15,14 @@ jobs:
 
       - name: Update Changelog File
         run: |
-          # Maak een tijdelijk bestand met de nieuwe release info
-          echo "### ${{ github.event.release.tag_name }} ($(date +'%Y-%m-%d'))" > new_entry.txt
-          echo "${{ github.event.release.body }}" >> new_entry.txt
-          echo -e "\n---\n" >> new_entry.txt
-          
-          # Zoek de plek na de header (regel 7 in dit voorbeeld) en voeg de nieuwe tekst in
-          # We plakken de nieuwe entry direct na de frontmatter/titel
-          sed -i '8r new_entry.txt' docs/changelog.md
+          # Prepare the new changelog entry
+          CHANGELOG_ENTRY="### ${{ github.event.release.tag_name }} ($(date +'%Y-%m-%d'))\n\n${{ github.event.release.body }}\n\n---\n\n<!-- LATEST_RELEASE_MARKER -->"
+
+          # Use awk to replace the placeholder line. This is more robust than sed with line numbers.
+          awk -v new_entry="$CHANGELOG_ENTRY" '
+          /<!-- LATEST_RELEASE_MARKER -->/ { print new_entry; next }
+          { print }
+          ' docs/changelog.md > temp_changelog.md && mv temp_changelog.md docs/changelog.md
 
       - name: Commit and Push
         run: |

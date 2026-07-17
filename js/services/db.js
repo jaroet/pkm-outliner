@@ -319,35 +319,33 @@
     const saveAttachmentAliases = (aliases) => db.meta.put({ key: 'attachmentAliases', value: aliases });
 
     const searchNotes = async (q) => {
-        const query = q.trim();
+        const query = q.trim().toLowerCase();
         if (!query) return [];
-        const lowerCaseQuery = query.toLowerCase();
-    
-        const allNotes = await db.notes.toArray();
-        const scoredResults = [];
-    
-        const escapedQuery = lowerCaseQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const wordBoundaryRegex = new RegExp(`\\b${escapedQuery}\\b`);
 
-        for (const note of allNotes) {
-            const lowerCaseTitle = note.title.toLowerCase();
-            const matchIndex = lowerCaseTitle.indexOf(lowerCaseQuery);
-    
-            if (matchIndex !== -1) {
-                let score = 0;
-                // 1. Big bonus for starting with the query
-                if (matchIndex === 0) score += 100;
-                // 2. Bonus for being a whole word match
-                if (wordBoundaryRegex.test(lowerCaseTitle)) score += 50;
-                // 3. Score based on position (higher score for earlier match)
-                score += 10 / (matchIndex + 1);
-                // 4. Score based on title length (higher score for shorter titles)
-                score += 10 / note.title.length;
+        // Use a Set to avoid duplicate results
+        const results = new Map();
 
-                scoredResults.push({ id: note.id, title: note.title, score: score });
+        // 1. Exact match (highest priority)
+        const exactMatch = await db.notes.where('title').equalsIgnoreCase(query).first();
+        if (exactMatch) results.set(exactMatch.id, { id: exactMatch.id, title: exactMatch.title, score: 1000 });
+
+        // 2. Starts with (high priority)
+        await db.notes.where('title').startsWithIgnoreCase(query).each(note => {
+            if (!results.has(note.id)) {
+                results.set(note.id, { id: note.id, title: note.title, score: 500 + (100 / note.title.length) });
             }
+        });
+
+        // 3. Contains (lower priority) - only if we need more results
+        if (results.size < 50) {
+            await db.notes.where('title').anyOfIgnoreCase(query.split(' ')).each(note => {
+                if (!results.has(note.id)) {
+                    results.set(note.id, { id: note.id, title: note.title, score: 100 + (10 / note.title.length) });
+                }
+            });
         }
-        return scoredResults.sort((a, b) => b.score - a.score).slice(0, 200);
+
+        return Array.from(results.values()).sort((a, b) => b.score - a.score).slice(0, 200);
     };
     const getAllNotes=()=>db.notes.toArray();
     const getAllNotesSortedBy=async(field)=>db.notes.orderBy(field).reverse().toArray();

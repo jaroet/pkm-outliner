@@ -6,9 +6,13 @@ permalink: /changelog/
 
 # Release History
 
-Dit overzicht wordt automatisch bijgewerkt bij elke nieuwe release.
+<!-- LATEST_RELEASE_MARKER -->
 
----
+## [0.8.0] - Current Release
+### Maintenance
+- General code quality and stability improvements.
+
+
 ## [0.7.3] - Current Release
 ### Maintenance
 - Added: an automated website update when release is created. 
