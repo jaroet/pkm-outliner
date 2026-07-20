@@ -481,7 +481,12 @@
             if (e.key === 'Escape') { if (selState.size > 0) { setSel(new Set()); e.preventDefault(); return; } }
             if (e.altKey && e.key === 'ArrowLeft' && fSecState !== 'content') { e.preventDefault(); back(); return; }
             if (e.altKey && e.key === 'ArrowRight' && fSecState !== 'content') { e.preventDefault(); forward(); return; }
-            if (e.key === '/' && fSecState !== 'content') { e.preventDefault(); setIsGlobalSearchActive(true); setTimeout(()=>document.querySelector('input[placeholder="Search..."]')?.focus(), 50); return; }
+            if (e.key === '/') {
+                if (fSecState !== 'content' || (fSecState === 'content' && !isEditingState)) {
+                    e.preventDefault();
+                    setIsGlobalSearchActive(true); setTimeout(()=>document.querySelector('input[placeholder="Search..."]')?.focus(), 50); return;
+                }
+            }
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'j') { e.preventDefault(); nav(await goToToday()); return; }
             if ((e.ctrlKey || e.metaKey) && e.altKey && (e.code === 'KeyR' || e.key.toLowerCase() === 'r')) { e.preventDefault(); goToRandomNote(); return; }
             if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'f') { e.preventDefault(); setContentSearch(true); return; }
