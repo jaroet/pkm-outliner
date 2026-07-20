@@ -4,7 +4,7 @@
     const { db, getTopology, createNote, updateNote, deleteNote, getFavorites, toggleFavorite, seedDatabase, getNote, getAllNotes, importNotes, getHomeNoteId, searchNotes, searchContent, getFontSize, getNoteCount, getVaultList, getCurrentVaultName, switchVault, getSectionVisibility, findNoteByTitle, getNoteTitlesByPrefix, getActiveThemeId, getTheme, setActiveThemeId, getThemes, getAttachmentAliases, getSplitRatio, setSplitRatio: dbSetSplitRatio } = J.Services.DB;
     const { goToDate, goToToday, getDateSubtitle } = J.Services.Journal; 
     const { createRenderer, wikiLinkExtension, setAttachmentAliases } = J.Services.Markdown;
-    const { NoteCard, LinkerModal, SettingsModal, ImportModal, RenameModal, NoteSection, TopBar, StatusBar, Icons, AllNotesModal, ContentSearchModal, VaultChooser, MentionsModal, APP_VERSION } = J;
+    const { NoteCard, LinkerModal, SettingsModal, ImportModal, RenameModal, NoteSection, TopBar, StatusBar, Icons, AllNotesModal, ContentSearchModal, VaultChooser, MentionsModal, CreateNoteFromLinkModal, APP_VERSION } = J;
     const { useHistory, useListNavigation, useClickOutside } = J.Hooks;
 
     marked.use({renderer:createRenderer({clickableCheckboxes:false}),extensions:[wikiLinkExtension]});
@@ -95,6 +95,9 @@
         const [isAllNotesModalOpen, setIsAllNotesModalOpen] = useState(false);
         const [isMentionsModalOpen, setIsMentionsModalOpen] = useState(false);
         const searchInputRef=useRef(null);
+        const [createLinkState, setCreateLinkState] = useState({ isOpen: false, title: '', position: { top: 0, left: 0 } });
+
+
         const textareaRef = useRef(null);
         const previewRef = useRef(null);
 
@@ -265,54 +268,51 @@
             }
         };
 
-        const handleSelectAutocomplete = async (index) => {
-            const query = autocompleteQuery.trim();
-            let targetTitle = '';
-            let newNoteId = null;
-
-            if (index < autocompleteResults.length) {
-                // Bestaande note selecteren
-                targetTitle = autocompleteResults[index].title;
-            } else if (query) {
-                // Nieuwe note aanmaken
-                const isChild = index === autocompleteResults.length;
-                const newNote = await createNote(query);
-                newNoteId = newNote.id;
-                targetTitle = newNote.title;
-
-                // Relatie leggen
-                if (isChild) {
-                    const currentNote = await getNote(currentId);
-                    await updateNote(currentId, { linksTo: [...(currentNote.linksTo || []), newNoteId] });
-                } else {
-                    await updateNote(newNoteId, { linksTo: [currentId] });
-                }
-            } else {
-                return;
-            }
-
-            // Link tekst invoegen in de huidige editor
-            const before = editContent.slice(0, triggerIndex);
-            const after = editContent.slice(textareaRef.current.selectionEnd);
-            const updatedContent = `${before}[[${targetTitle}]]${after}`;
-            setEditContent(updatedContent);
-            setShowAutocomplete(false);
-
-            if (newNoteId) {
-                // Bij aanmaak: opslaan en navigeren
-                await saveContent(updatedContent);
-                nav(newNoteId);
-            } else {
-                // Bij bestaande note: focus terug naar editor
-                setTimeout(() => {
-                    if (textareaRef.current) {
-                        textareaRef.current.focus();
-                        const p = triggerIndex + 2 + targetTitle.length + 2;
-                        textareaRef.current.setSelectionRange(p, p);
-                    }
-                }, 50);
-            }
-        };
+        const handleSelectAutocomplete = useCallback(async (index) => {
+             if (!activeNote) return;
+ 
+             const query = autocompleteQuery.trim();
+             let targetTitle = '';
+ 
+             if (index < autocompleteResults.length) {
+                 // An existing note was selected
+                 targetTitle = autocompleteResults[index].title;
+             } else if (query) {
+                 // A new note needs to be created
+                 const isChild = index === autocompleteResults.length;
+                 const newNote = await createNote(query);
+                 targetTitle = newNote.title;
+ 
+                 if (isChild) {
+                     // Add the new note as a child of the currently edited note
+                     const currentLinks = activeNote.linksTo || [];
+                     await updateNote(activeNote.id, { linksTo: [...currentLinks, newNote.id] });
+                 } else {
+                     // Add the currently edited note as a child of the new note
+                     await updateNote(newNote.id, { linksTo: [activeNote.id] });
+                 }
+                 // Refresh topology to reflect the new link
+                 getTopology(currentId).then(setTopo);
+             } else {
+                 return; // Nothing to do
+             }
+ 
+             // Insert the wiki link into the editor content
+             const before = editContent.slice(0, triggerIndex);
+             const after = textareaRef.current.value.slice(textareaRef.current.selectionEnd);
+             const updatedContent = `${before}[[${targetTitle}]]${after}`;
+             setEditContent(updatedContent);
+             setShowAutocomplete(false);
+ 
+             // Return focus to the editor at the correct position
+             setTimeout(() => {
+                 if (textareaRef.current) {
+                     textareaRef.current.focus();
+                     const newCaretPosition = triggerIndex + 2 + targetTitle.length + 2;
+                     textareaRef.current.setSelectionRange(newCaretPosition, newCaretPosition);
+                 }
+             }, 50);
+        }, [activeNote, autocompleteQuery, autocompleteResults, editContent, triggerIndex, currentId]);
 
         const { activeIndex: selectedSuggestionIndex, setActiveIndex: setSelectedSuggestionIndex, listRef: sugListRef, handleKeyDown: handleAutocompleteKeyDown } = useListNavigation({
             isOpen: showAutocomplete, 
@@ -484,7 +484,12 @@
             if (e.key === 'Escape') { if (selState.size > 0) { setSel(new Set()); e.preventDefault(); return; } }
             if (e.altKey && e.key === 'ArrowLeft' && fSecState !== 'content') { e.preventDefault(); back(); return; }
             if (e.altKey && e.key === 'ArrowRight' && fSecState !== 'content') { e.preventDefault(); forward(); return; }
-            if (e.key === '/' && fSecState !== 'content') { e.preventDefault(); setIsGlobalSearchActive(true); setTimeout(()=>document.querySelector('input[placeholder="Search..."]')?.focus(), 50); return; }
+            if (e.key === '/') {
+                if (fSecState !== 'content' || (fSecState === 'content' && !isEditingState)) {
+                    e.preventDefault();
+                    setIsGlobalSearchActive(true); setTimeout(()=>document.querySelector('input[placeholder="Search..."]')?.focus(), 50); return;
+                }
+            }
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'j') { e.preventDefault(); nav(await goToToday()); return; }
             if ((e.ctrlKey || e.metaKey) && e.altKey && (e.code === 'KeyR' || e.key.toLowerCase() === 'r')) { e.preventDefault(); goToRandomNote(); return; }
             if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'f') { e.preventDefault(); setContentSearch(true); return; }
@@ -606,6 +611,22 @@
                 }
             }
         }, [isEditing, fSec, sel, currentId, back, forward, globalSearchResults, globalSearchIndex, isGlobalSearchActive, isRenameModalOpen, isLinkerModalOpen, isSettingsOpen, isImportModalOpen, isCalendarOpen, goToRandomNote, contentSearch, contentSource]);
+
+        const handleCreateNoteFromLink = async (type) => {
+            const { title } = createLinkState;
+            if (!title || !activeNote) return;
+
+            const newNote = await createNote(title);
+            if (type === 'child') {
+                const currentLinks = activeNote.linksTo || [];
+                await updateNote(activeNote.id, { linksTo: [...currentLinks, newNote.id] });
+            } else { // parent
+                await updateNote(newNote.id, { linksTo: [activeNote.id] });
+            }
+
+            setCreateLinkState({ isOpen: false, title: '', position: { top: 0, left: 0 } });
+            nav(newNote.id);
+        };
 
         const handleKeyDownRef = useRef(handleGlobalKeyDown);
         useEffect(() => { handleKeyDownRef.current = handleGlobalKeyDown; }, [handleGlobalKeyDown]);
@@ -768,8 +789,18 @@
                                     onClick=${async (e) => {
                                         if (e.target.classList.contains('internal-link') && e.target.dataset.title) {
                                             e.preventDefault();
-                                            const noteToNav = await findNoteByTitle(e.target.dataset.title);
-                                            if (noteToNav) nav(noteToNav.id);
+                                            const title = e.target.dataset.title;
+                                            const noteToNav = await findNoteByTitle(title);
+                                            if (noteToNav) {
+                                                nav(noteToNav.id);
+                                                // Ensure we are not in edit mode when navigating
+                                                if (isEditing) {
+                                                    setIsEditing(false);
+                                                }
+                                            } else {
+                                                const rect = e.target.getBoundingClientRect();
+                                                setCreateLinkState({ isOpen: true, title, position: { top: rect.bottom + 5, left: rect.left } });
+                                            }
                                         }
                                     }}
                                 ></div>
@@ -851,8 +882,9 @@
                     onNavigate=${id=>{setContentSearch(false);nav(id);}} 
                     initialQuery=${contentSearchState.query} 
                     initialResults=${contentSearchState.results} 
-                    onStateChange=${(q, r) => setContentSearchState({query: q, results: r})} 
+                    onStateChange=${(q, r) => setContentSearchState({query: q, results: r})}
                 />
+                <${CreateNoteFromLinkModal} isOpen=${createLinkState.isOpen} onClose=${() => setCreateLinkState({ isOpen: false })} onCreate=${handleCreateNoteFromLink} title=${createLinkState.title} position=${createLinkState.position} />
             </div>
         `;
     };
