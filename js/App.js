@@ -265,54 +265,51 @@
             }
         };
 
-        const handleSelectAutocomplete = async (index) => {
-            const query = autocompleteQuery.trim();
-            let targetTitle = '';
-            let newNoteId = null;
-
-            if (index < autocompleteResults.length) {
-                // Bestaande note selecteren
-                targetTitle = autocompleteResults[index].title;
-            } else if (query) {
-                // Nieuwe note aanmaken
-                const isChild = index === autocompleteResults.length;
-                const newNote = await createNote(query);
-                newNoteId = newNote.id;
-                targetTitle = newNote.title;
-
-                // Relatie leggen
-                if (isChild) {
-                    const currentNote = await getNote(currentId);
-                    await updateNote(currentId, { linksTo: [...(currentNote.linksTo || []), newNoteId] });
-                } else {
-                    await updateNote(newNoteId, { linksTo: [currentId] });
-                }
-            } else {
-                return;
-            }
-
-            // Link tekst invoegen in de huidige editor
-            const before = editContent.slice(0, triggerIndex);
-            const after = editContent.slice(textareaRef.current.selectionEnd);
-            const updatedContent = `${before}[[${targetTitle}]]${after}`;
-            setEditContent(updatedContent);
-            setShowAutocomplete(false);
-
-            if (newNoteId) {
-                // Bij aanmaak: opslaan en navigeren
-                await saveContent(updatedContent);
-                nav(newNoteId);
-            } else {
-                // Bij bestaande note: focus terug naar editor
-                setTimeout(() => {
-                    if (textareaRef.current) {
-                        textareaRef.current.focus();
-                        const p = triggerIndex + 2 + targetTitle.length + 2;
-                        textareaRef.current.setSelectionRange(p, p);
-                    }
-                }, 50);
-            }
-        };
+        const handleSelectAutocomplete = useCallback(async (index) => {
+             if (!activeNote) return;
+ 
+             const query = autocompleteQuery.trim();
+             let targetTitle = '';
+ 
+             if (index < autocompleteResults.length) {
+                 // An existing note was selected
+                 targetTitle = autocompleteResults[index].title;
+             } else if (query) {
+                 // A new note needs to be created
+                 const isChild = index === autocompleteResults.length;
+                 const newNote = await createNote(query);
+                 targetTitle = newNote.title;
+ 
+                 if (isChild) {
+                     // Add the new note as a child of the currently edited note
+                     const currentLinks = activeNote.linksTo || [];
+                     await updateNote(activeNote.id, { linksTo: [...currentLinks, newNote.id] });
+                 } else {
+                     // Add the currently edited note as a child of the new note
+                     await updateNote(newNote.id, { linksTo: [activeNote.id] });
+                 }
+                 // Refresh topology to reflect the new link
+                 getTopology(currentId).then(setTopo);
+             } else {
+                 return; // Nothing to do
+             }
+ 
+             // Insert the wiki link into the editor content
+             const before = editContent.slice(0, triggerIndex);
+             const after = textareaRef.current.value.slice(textareaRef.current.selectionEnd);
+             const updatedContent = `${before}[[${targetTitle}]]${after}`;
+             setEditContent(updatedContent);
+             setShowAutocomplete(false);
+ 
+             // Return focus to the editor at the correct position
+             setTimeout(() => {
+                 if (textareaRef.current) {
+                     textareaRef.current.focus();
+                     const newCaretPosition = triggerIndex + 2 + targetTitle.length + 2;
+                     textareaRef.current.setSelectionRange(newCaretPosition, newCaretPosition);
+                 }
+             }, 50);
+        }, [activeNote, autocompleteQuery, autocompleteResults, editContent, triggerIndex, currentId]);
 
         const { activeIndex: selectedSuggestionIndex, setActiveIndex: setSelectedSuggestionIndex, listRef: sugListRef, handleKeyDown: handleAutocompleteKeyDown } = useListNavigation({
             isOpen: showAutocomplete, 
