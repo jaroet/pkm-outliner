@@ -43,7 +43,7 @@
                         </div>
                     `}
                     <span className="mx-2 opacity-50">|</span>
-                    <a href="https://github.com/jaroet/JaRoet-PKM/releases" target="_blank" rel="noopener noreferrer" className="opacity-70 hover:opacity-100 hover:text-primary hover:underline transition-all">
+                    <a href="https://github.com/jaroet/pkm-outliner/releases" target="_blank" rel="noopener noreferrer" className="opacity-70 hover:opacity-100 hover:text-primary hover:underline transition-all">
                         v${version}
                     </a>
                 </div>
