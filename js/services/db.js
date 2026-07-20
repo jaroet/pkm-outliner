@@ -321,30 +321,20 @@
     const searchNotes = async (q) => {
         const query = q.trim().toLowerCase();
         if (!query) return [];
-
-        // Use a Set to avoid duplicate results
+    
         const results = new Map();
-
-        // 1. Exact match (highest priority)
-        const exactMatch = await db.notes.where('title').equalsIgnoreCase(query).first();
-        if (exactMatch) results.set(exactMatch.id, { id: exactMatch.id, title: exactMatch.title, score: 1000 });
-
-        // 2. Starts with (high priority)
-        await db.notes.where('title').startsWithIgnoreCase(query).each(note => {
-            if (!results.has(note.id)) {
-                results.set(note.id, { id: note.id, title: note.title, score: 500 + (100 / note.title.length) });
+    
+        await db.notes.each(note => {
+            const titleLower = note.title.toLowerCase();
+            const index = titleLower.indexOf(query);
+    
+            if (index !== -1) {
+                // Score higher for matches at the beginning of the title
+                const score = index === 0 ? 1000 : 500;
+                results.set(note.id, { id: note.id, title: note.title, score: score - note.title.length });
             }
         });
-
-        // 3. Contains (lower priority) - only if we need more results
-        if (results.size < 50) {
-            await db.notes.where('title').anyOfIgnoreCase(query.split(' ')).each(note => {
-                if (!results.has(note.id)) {
-                    results.set(note.id, { id: note.id, title: note.title, score: 100 + (10 / note.title.length) });
-                }
-            });
-        }
-
+    
         return Array.from(results.values()).sort((a, b) => b.score - a.score).slice(0, 200);
     };
     const getAllNotes=()=>db.notes.toArray();
