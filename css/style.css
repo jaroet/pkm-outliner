@@ -88,3 +88,9 @@ body {
 .prose h4 { color: color-mix(in srgb, var(--primary) 55%, var(--foreground)) !important; font-weight: 600 !important; }
 .prose h5 { color: color-mix(in srgb, var(--primary) 40%, var(--foreground)) !important; font-weight: 600 !important; }
 .prose h6 { color: color-mix(in srgb, var(--primary) 25%, var(--foreground)) !important; font-weight: 600 !important; }
+
+/* Styles for broken wiki links */
+.internal-link.broken-link {
+    color: color-mix(in srgb, var(--primary) 70%, var(--background)) !important;
+    text-decoration-style: dashed !important;
+}

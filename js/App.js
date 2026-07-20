@@ -4,7 +4,7 @@
     const { db, getTopology, createNote, updateNote, deleteNote, getFavorites, toggleFavorite, seedDatabase, getNote, getAllNotes, importNotes, getHomeNoteId, searchNotes, searchContent, getFontSize, getNoteCount, getVaultList, getCurrentVaultName, switchVault, getSectionVisibility, findNoteByTitle, getNoteTitlesByPrefix, getActiveThemeId, getTheme, setActiveThemeId, getThemes, getAttachmentAliases, getSplitRatio, setSplitRatio: dbSetSplitRatio } = J.Services.DB;
     const { goToDate, goToToday, getDateSubtitle } = J.Services.Journal; 
     const { createRenderer, wikiLinkExtension, setAttachmentAliases } = J.Services.Markdown;
-    const { NoteCard, LinkerModal, SettingsModal, ImportModal, RenameModal, NoteSection, TopBar, StatusBar, Icons, AllNotesModal, ContentSearchModal, VaultChooser, MentionsModal, APP_VERSION } = J;
+    const { NoteCard, LinkerModal, SettingsModal, ImportModal, RenameModal, NoteSection, TopBar, StatusBar, Icons, AllNotesModal, ContentSearchModal, VaultChooser, MentionsModal, CreateNoteFromLinkModal, APP_VERSION } = J;
     const { useHistory, useListNavigation, useClickOutside } = J.Hooks;
 
     marked.use({renderer:createRenderer({clickableCheckboxes:false}),extensions:[wikiLinkExtension]});
@@ -95,6 +95,9 @@
         const [isAllNotesModalOpen, setIsAllNotesModalOpen] = useState(false);
         const [isMentionsModalOpen, setIsMentionsModalOpen] = useState(false);
         const searchInputRef=useRef(null);
+        const [createLinkState, setCreateLinkState] = useState({ isOpen: false, title: '', position: { top: 0, left: 0 } });
+
+
         const textareaRef = useRef(null);
         const previewRef = useRef(null);
 
@@ -609,6 +612,22 @@
             }
         }, [isEditing, fSec, sel, currentId, back, forward, globalSearchResults, globalSearchIndex, isGlobalSearchActive, isRenameModalOpen, isLinkerModalOpen, isSettingsOpen, isImportModalOpen, isCalendarOpen, goToRandomNote, contentSearch, contentSource]);
 
+        const handleCreateNoteFromLink = async (type) => {
+            const { title } = createLinkState;
+            if (!title || !activeNote) return;
+
+            const newNote = await createNote(title);
+            if (type === 'child') {
+                const currentLinks = activeNote.linksTo || [];
+                await updateNote(activeNote.id, { linksTo: [...currentLinks, newNote.id] });
+            } else { // parent
+                await updateNote(newNote.id, { linksTo: [activeNote.id] });
+            }
+
+            setCreateLinkState({ isOpen: false, title: '', position: { top: 0, left: 0 } });
+            nav(newNote.id);
+        };
+
         const handleKeyDownRef = useRef(handleGlobalKeyDown);
         useEffect(() => { handleKeyDownRef.current = handleGlobalKeyDown; }, [handleGlobalKeyDown]);
         useEffect(() => { const h=(e)=>handleKeyDownRef.current(e); window.addEventListener('keydown',h); return ()=>window.removeEventListener('keydown',h); }, []);
@@ -770,8 +789,18 @@
                                     onClick=${async (e) => {
                                         if (e.target.classList.contains('internal-link') && e.target.dataset.title) {
                                             e.preventDefault();
-                                            const noteToNav = await findNoteByTitle(e.target.dataset.title);
-                                            if (noteToNav) nav(noteToNav.id);
+                                            const title = e.target.dataset.title;
+                                            const noteToNav = await findNoteByTitle(title);
+                                            if (noteToNav) {
+                                                nav(noteToNav.id);
+                                                // Ensure we are not in edit mode when navigating
+                                                if (isEditing) {
+                                                    setIsEditing(false);
+                                                }
+                                            } else {
+                                                const rect = e.target.getBoundingClientRect();
+                                                setCreateLinkState({ isOpen: true, title, position: { top: rect.bottom + 5, left: rect.left } });
+                                            }
                                         }
                                     }}
                                 ></div>
@@ -853,8 +882,9 @@
                     onNavigate=${id=>{setContentSearch(false);nav(id);}} 
                     initialQuery=${contentSearchState.query} 
                     initialResults=${contentSearchState.results} 
-                    onStateChange=${(q, r) => setContentSearchState({query: q, results: r})} 
+                    onStateChange=${(q, r) => setContentSearchState({query: q, results: r})}
                 />
+                <${CreateNoteFromLinkModal} isOpen=${createLinkState.isOpen} onClose=${() => setCreateLinkState({ isOpen: false })} onCreate=${handleCreateNoteFromLink} title=${createLinkState.title} position=${createLinkState.position} />
             </div>
         `;
     };
