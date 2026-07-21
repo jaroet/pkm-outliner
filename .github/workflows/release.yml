@@ -25,7 +25,7 @@ jobs:
         # Create a zip named 'projectname-v1.0.0.zip'
         # Excluding hidden files like .git to keep the zip clean
         run: |
-          zip -r ${{ env.REPO_NAME }}-${{ env.RELEASE_VERSION }}.zip . -x "*.git*" ".github*"
+          zip -r ${{ env.REPO_NAME }}-${{ env.RELEASE_VERSION }}.zip . -x "*.git*" ".github*" "generate-vault.py" "context.md"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
