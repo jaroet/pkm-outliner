@@ -12,13 +12,20 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history for all tags
 
       - name: Update Changelog File
         run: |
-          # Prepare the new changelog entry
-          CHANGELOG_ENTRY="### ${{ github.event.release.tag_name }} ($(date +'%Y-%m-%d'))\n\n${{ github.event.release.body }}\n\n---\n\n<!-- LATEST_RELEASE_MARKER -->"
+          # Get the previous tag, otherwise fall back to the first commit
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 `git rev-list --tags --skip=1 --max-count=1` 2>/dev/null || git rev-list --max-parents=0 HEAD)
+          NEW_TAG=${{ github.event.release.tag_name }}
 
-          # Use awk to replace the placeholder line. This is more robust than sed with line numbers.
+          # Get commit messages between the two tags, formatted as a list
+          COMMIT_LOG=$(git log ${PREVIOUS_TAG}..${NEW_TAG} --pretty=format:"- %s")
+
+          CHANGELOG_ENTRY="## ${NEW_TAG} - ($(date +'%Y-%m-%d'))\n${COMMIT_LOG}\n\n---\n\n<!-- LATEST_RELEASE_MARKER -->"
+
           awk -v new_entry="$CHANGELOG_ENTRY" '
           /<!-- LATEST_RELEASE_MARKER -->/ { print new_entry; next }
           { print }
