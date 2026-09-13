@@ -6,9 +6,18 @@ permalink: /changelog/
 
 # Release History
 
+## [0.9.0] - Current Release
+- Fixed: changed the workflow to first write the changelog and then create the release zip. Upgraded to version 0.8.5.
+- Fixed: the changelog will now first show added features and then the fixed issues.
+- Merge pull request #6 from jaroet/jr/zondag120926
+- Simplified the history logic to behave in one state instead of two.
+- removed the encryption feature as it is not implemented currently.
+- removed unused and leftover files and references.
+- updated versions to 0.8.2 in general and removed frontmatter js file that was not really implemented.
+
 <!-- LATEST_RELEASE_MARKER -->
 
-## [0.8.2] - Current Release
+## [0.8.2] - Previous Release
 ### Maintenance
 - Removed a leftover script reference to the not-yet-implemented FrontmatterDisplay component.
 - Version bumped to 0.8.2 across the project, matching the latest released version.
