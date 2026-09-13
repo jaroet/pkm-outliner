@@ -8,12 +8,21 @@ permalink: /changelog/
 
 <!-- LATEST_RELEASE_MARKER -->
 
-## [0.8.0] - Current Release
+## [0.8.2] - Current Release
+### Maintenance
+- Removed a leftover script reference to the not-yet-implemented FrontmatterDisplay component.
+- Version bumped to 0.8.2 across the project, matching the latest released version.
+
+## [0.8.1] - Previous Release
+### Maintenance
+- General code quality and stability improvements.
+
+## [0.8.0] - Previous Release
 ### Maintenance
 - General code quality and stability improvements.
 
 
-## [0.7.3] - Current Release
+## [0.7.3] - Previous Release
 ### Maintenance
 - Added: an automated website update when release is created. 
 - Added: a context.md to bring the AI uptodate with the current status of the project. 
