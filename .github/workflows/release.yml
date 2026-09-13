@@ -6,31 +6,62 @@ on:
       - 'v*'
 
 jobs:
-  build:
+  update-changelog:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    
+    outputs:
+      new-sha: ${{ steps.commit.outputs.sha }}
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Update Changelog
+        run: |
+          NEW_TAG=${{ github.ref_name }}
+          NEW_VERSION=${NEW_TAG#v}
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 $(git rev-list --tags --skip=1 --max-count=1) 2>/dev/null || git rev-list --max-parents=0 HEAD)
+          COMMIT_LOG=$(git log ${PREVIOUS_TAG}..${NEW_TAG} --pretty=format:"- %s" | sort)
+          CHANGELOG_ENTRY="## [${NEW_VERSION}] - Current Release\n${COMMIT_LOG}\n\n<!-- LATEST_RELEASE_MARKER -->"
+          awk -v new_entry="$CHANGELOG_ENTRY" '
+          /<!-- LATEST_RELEASE_MARKER -->/ { print new_entry; after_marker=1; next }
+          after_marker && /^## .* - Current Release$/ { sub(/ - Current Release$/, " - Previous Release"); print; after_marker=0; next }
+          { print }
+          ' docs/changelog.md > temp_changelog.md && mv temp_changelog.md docs/changelog.md
+
+      - name: Commit changelog
+        id: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/changelog.md
+          git commit -m "docs: update changelog for ${{ github.ref_name }}"
+          git push
+          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+  build-release:
+    needs: update-changelog
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set Release Version
-        # This extracts the tag name (e.g., v1.0.2) and the repo name
-        run: |
-          echo "RELEASE_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
-          echo "REPO_NAME=${GITHUB_REPOSITORY#*/}" >> $GITHUB_ENV
+        with:
+          ref: ${{ needs.update-changelog.outputs.new-sha }}
 
       - name: Create Zip Archive
-        # Create a zip named 'projectname-v1.0.0.zip'
-        # Excluding hidden files like .git to keep the zip clean
         run: |
-          zip -r ${{ env.REPO_NAME }}-${{ env.RELEASE_VERSION }}.zip . -x "*.git*" ".github*" "generate-vault.py" "context.md"
+          zip -r pkm-outliner-${{ github.ref_name }}.zip . -x "*.git*" ".github*" "generate-vault.py" "context.md"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ env.REPO_NAME }}-${{ env.RELEASE_VERSION }}.zip
+          tag_name: ${{ github.ref_name }}
+          files: pkm-outliner-${{ github.ref_name }}.zip
           generate_release_notes: true
-          draft: false 
+          draft: false
           prerelease: false
