@@ -21,7 +21,6 @@ The project is a **client-side Personal Knowledge Management (PKM) outliner**. I
 ## 4. Current Development Focus
 
 *   **Local-First:** The current priority is local development and testing.
-*   **Security Feature:** A key feature under consideration is adding **client-side encryption** to the JSON import/export functionality. The proposed method is to use the browser's native `Web Crypto API` (AES-GCM) to encrypt the data with a user-provided password.
 
 ## Instructions for AI Assistant
 
