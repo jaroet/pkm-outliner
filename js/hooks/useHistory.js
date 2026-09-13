@@ -1,37 +1,28 @@
-
 (function(J) {
-    const { useState, useCallback } = React;
+    const { useState } = React;
 
     J.Hooks.useHistory = (init) => {
-        const [h,setH]=useState(init?[init]:[]);const [i,setI]=useState(init?0:-1);
-        
-        const visit=useCallback((id)=>{
-            if (i >= 0 && h[i] === id) return;
+        const [h, setH] = useState(init ? { list: [init], idx: 0 } : { list: [], idx: -1 });
 
-            setH(p=>{
-                // Slice forward history, push new
-                const n=p.slice(0,i+1);
-                n.push(id);
-                
-                // Max history limit
-                if(n.length>50) n.shift();
-                return n;
+        const visit = (id) => {
+            setH(s => {
+                if (s.idx >= 0 && s.list[s.idx] === id) return s;
+                let list = [...s.list.slice(0, s.idx + 1), id];
+                if (list.length > 50) list.shift();
+                const idx = Math.min(s.idx + 1, list.length - 1);
+                return { list, idx };
             });
-            // Update index
-            setI(p=>{
-                const l=i+2>50?49:i+1; 
-                return l;
-            }); 
-        },[h, i]);
+        };
 
+        const { list, idx } = h;
         return {
-            currentId: i>=0?h[i]:null,
+            currentId: idx >= 0 ? list[idx] : null,
             visit,
-            replace:(id)=>{setH([id]);setI(0);},
-            back:()=>i>0&&setI(i-1),
-            forward:()=>i<h.length-1&&setI(i+1),
-            canBack:i>0,
-            canForward:i<h.length-1
+            replace: (id) => setH({ list: [id], idx: 0 }),
+            back: () => setH(s => s.idx > 0 ? { ...s, idx: s.idx - 1 } : s),
+            forward: () => setH(s => s.idx < s.list.length - 1 ? { ...s, idx: s.idx + 1 } : s),
+            canBack: idx > 0,
+            canForward: idx < list.length - 1
         };
     };
 })(window.Jaroet);
