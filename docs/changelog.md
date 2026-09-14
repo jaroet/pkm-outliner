@@ -15,6 +15,12 @@ permalink: /changelog/
 - removed unused and leftover files and references.
 - updated versions to 0.8.2 in general and removed frontmatter js file that was not really implemented.
 
+## [0.9.1] - Current Release
+- Added: the versionnumber is now upgraded during the build release step. So the release and versionnumber are always in sync.
+- Merge pull request #7 from jaroet:jr/20260924
+- docs: update changelog for v0.9.0
+- updated context
+
 <!-- LATEST_RELEASE_MARKER -->
 
 ## [0.8.2] - Previous Release
