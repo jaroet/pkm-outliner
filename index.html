@@ -51,11 +51,18 @@
     <!-- APP SCRIPTS (Order Matters) -->
     <script src="js/globals.js"></script>
     <script src="js/services/markdown.js"></script>
-    <script src="js/services/db.js"></script>
+    <script src="js/services/db/core.js"></script>
+    <script src="js/services/db/notes.js"></script>
+    <script src="js/services/db/search.js"></script>
+    <script src="js/services/db/themes.js"></script>
+    <script src="js/services/db/prefs.js"></script>
+    <script src="js/services/db/import.js"></script>
     <script src="js/services/journal.js"></script>
     <script src="js/hooks/useClickOutside.js"></script>
     <script src="js/hooks/useListNavigation.js"></script>
     <script src="js/hooks/useHistory.js?v=0.9.2"></script>
+    <script src="js/hooks/useSplitPane.js?v=0.9.2"></script>
+    <script src="js/hooks/useAutoSave.js?v=0.9.2"></script>
     
     <!-- COMPONENTS -->
     <script src="js/components/Icons.js?v=0.9.2"></script>
@@ -63,7 +70,15 @@
     <script src="js/components/NoteSection.js?v=0.9.2"></script>
     <script src="js/components/LinkerModal.js?v=0.9.2"></script>
     
+    <script src="js/components/app/ResizeHandle.js?v=0.9.2"></script>
+    <script src="js/components/app/FavoritesPanel.js?v=0.9.2"></script>
+    <script src="js/components/app/EditorPane.js?v=0.9.2"></script>
+    
     <script src="js/components/CalendarDropdown.js?v=0.9.2"></script>
+    <script src="js/components/settings/GeneralTab.js?v=0.9.2"></script>
+    <script src="js/components/settings/ThemeTab.js?v=0.9.2"></script>
+    <script src="js/components/settings/DatabaseTab.js?v=0.9.2"></script>
+    <script src="js/components/settings/AttachmentsTab.js?v=0.9.2"></script>
     <script src="js/components/SettingsModal.js?v=0.9.2"></script>
     <script src="js/components/ImportModal.js?v=0.9.2"></script>
     <script src="js/components/RenameModal.js?v=0.9.2"></script>

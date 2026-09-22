@@ -1,11 +1,11 @@
 
 (function(J) {
     const { useState, useEffect, useRef, useCallback, useMemo } = React;
-    const { db, getTopology, createNote, updateNote, deleteNote, getFavorites, toggleFavorite, seedDatabase, getNote, getAllNotes, importNotes, getHomeNoteId, searchNotes, searchContent, getFontSize, getNoteCount, getVaultList, getCurrentVaultName, switchVault, getSectionVisibility, findNoteByTitle, getNoteTitlesByPrefix, getActiveThemeId, getTheme, setActiveThemeId, getThemes, getAttachmentAliases, getSplitRatio, setSplitRatio: dbSetSplitRatio } = J.Services.DB;
+    const { db, getTopology, createNote, updateNote, deleteNote, getFavorites, toggleFavorite, seedDatabase, getNote, getAllNotes, importNotes, getHomeNoteId, searchNotes, searchContent, getFontSize, getNoteCount, getVaultList, getCurrentVaultName, switchVault, getSectionVisibility, findNoteByTitle, getNoteTitlesByPrefix, getActiveThemeId, getTheme, setActiveThemeId, getThemes, getAttachmentAliases, getSplitRatio } = J.Services.DB;
     const { goToDate, goToToday, getDateSubtitle, formatDateForJournal } = J.Services.Journal; 
     const { createRenderer, wikiLinkExtension, setAttachmentAliases } = J.Services.Markdown;
-    const { NoteCard, LinkerModal, SettingsModal, ImportModal, RenameModal, NoteSection, TopBar, StatusBar, Icons, AllNotesModal, ContentSearchModal, VaultChooser, MentionsModal, CreateNoteFromLinkModal, APP_VERSION } = J;
-    const { useHistory, useListNavigation, useClickOutside } = J.Hooks;
+    const { NoteCard, LinkerModal, SettingsModal, ImportModal, RenameModal, NoteSection, TopBar, StatusBar, Icons, AllNotesModal, ContentSearchModal, VaultChooser, MentionsModal, CreateNoteFromLinkModal, EditorPane, ResizeHandle, FavoritesPanel, APP_VERSION } = J;
+    const { useHistory, useListNavigation, useClickOutside, useSplitPane, useAutoSave } = J.Hooks;
 
     marked.use({renderer:createRenderer({clickableCheckboxes:false}),extensions:[wikiLinkExtension]});
 
@@ -26,39 +26,7 @@
         const [triggerIndex, setTriggerIndex] = useState(-1);
 
         // Resizable Pane State
-        const [splitRatio, setSplitRatio] = useState(0.5);
-        const splitRatioLoaded = useRef(false);
-        const isDragging = useRef(false);
-        const containerRef = useRef(null);
-
-        const handleMouseDown = (e) => {
-            isDragging.current = true;
-            splitRatioLoaded.current = true;
-            document.body.style.cursor = 'col-resize';
-            document.body.style.userSelect = 'none';
-        };
-
-        const handleMouseMove = useCallback((e) => {
-            if (!isDragging.current || !containerRef.current) return;
-            const containerRect = containerRef.current.getBoundingClientRect();
-            const newRatio = (e.clientX - containerRect.left) / containerRect.width;
-            setSplitRatio(Math.min(Math.max(newRatio, 0.2), 0.8));
-        }, []);
-
-        const handleMouseUp = useCallback(() => {
-            isDragging.current = false;
-            document.body.style.cursor = '';
-            document.body.style.userSelect = '';
-        }, []);
-
-        useEffect(() => {
-            window.addEventListener('mousemove', handleMouseMove);
-            window.addEventListener('mouseup', handleMouseUp);
-            return () => {
-                window.removeEventListener('mousemove', handleMouseMove);
-                window.removeEventListener('mouseup', handleMouseUp);
-            };
-        }, [handleMouseMove, handleMouseUp]);
+        const { splitRatio, setSplitRatio, splitRatioLoaded, containerRef, onMouseDown: handleMouseDown } = useSplitPane();
         
         // Navigation State
         const [fSec,setFSec]=useState('center'),[fIdx,setFIdx]=useState(0),[sel,setSel]=useState(new Set());
@@ -230,13 +198,6 @@
             }
         }, [fSec, isEditing]);
 
-        // Persist split ratio
-        useEffect(() => {
-            if (!splitRatioLoaded.current) return;
-            const t = setTimeout(() => dbSetSplitRatio(splitRatio), 200);
-            return () => clearTimeout(t);
-        }, [splitRatio]);
-
         // Autocomplete Logic
         useEffect(()=>{
             if(showAutocomplete){
@@ -324,33 +285,7 @@
         const autocompleteDropdownRef = useClickOutside(showAutocomplete, useCallback(() => setShowAutocomplete(false), []));
 
         // Auto-save logic
-        const saveContent = useCallback(async (content) => {
-            if (!activeNote) return;
-            const id = activeNote.id;
-            
-            const WIKI_LINK_REGEX = /\[\[([^|\]\n]+)(?:\|[^\]\n]*)?\]\]/g;
-            const outgoingLinkIds = new Set();
-            let match;
-            const allNotes = await getAllNotes();
-            const titleToIdMap = new Map(allNotes.map(note => [note.title.toLowerCase(), note.id]));
-            
-            while ((match = WIKI_LINK_REGEX.exec(content)) !== null) {
-                const linkTitle = match[1].trim().toLowerCase();
-                if (titleToIdMap.has(linkTitle)) {
-                    outgoingLinkIds.add(titleToIdMap.get(linkTitle));
-                }
-            }
-            await updateNote(id, { content, outgoingLinks: Array.from(outgoingLinkIds) });
-            getTopology(currentId).then(setTopo);
-            getFavorites().then(setFavs);
-        }, [activeNote, currentId]);
-
-        useEffect(() => {
-            const t = setTimeout(() => {
-                if (activeNote && editContent !== activeNote.content) saveContent(editContent);
-            }, 500);
-            return () => clearTimeout(t);
-        }, [editContent, activeNote, saveContent]);
+        useAutoSave({ activeNote, editContent, currentId, setTopo, setFavs });
 
         // Actions
         const nav=(id)=>visit(id);
@@ -663,6 +598,24 @@
             return () => window.removeEventListener('keydown', insertDate);
         }, []);
         
+        const onPreviewClick = async (e) => {
+            if (e.target.classList.contains('internal-link') && e.target.dataset.title) {
+                e.preventDefault();
+                const title = e.target.dataset.title;
+                const noteToNav = await findNoteByTitle(title);
+                if (noteToNav) {
+                    nav(noteToNav.id);
+                    // Ensure we are not in edit mode when navigating
+                    if (isEditing) {
+                        setIsEditing(false);
+                    }
+                } else {
+                    const rect = e.target.getBoundingClientRect();
+                    setCreateLinkState({ isOpen: true, title, position: { top: rect.bottom + 5, left: rect.left } });
+                }
+            }
+        };
+        
         return html`
             <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground font-sans flex-col">
                 <${TopBar}
@@ -739,107 +692,39 @@
                         </div>
 
                         ${vis.showFavorites && html`
-                            <div style=${{ borderColor: 'color-mix(in srgb, var(--primary) 20%, transparent)' }} className="flex-shrink-0 p-3 border-t bg-gray-50/50 dark:bg-gray-900/30 backdrop-blur-sm">
-                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">Favorites</div>
-                                <div className="flex flex-wrap gap-2">
-                                    ${favs.length > 0 ? favs.map(f => html`
-                                        <button 
-                                            key=${f.id}
-                                            onClick=${(e) => { e.stopPropagation(); nav(f.id); }}
-                                            style=${{ 
-                                                borderColor: 'color-mix(in srgb, var(--primary) 20%, transparent)',
-                                                backgroundColor: 'color-mix(in srgb, var(--primary) 5%, transparent)',
-                                                color: 'var(--primary)'
-                                            }}
-                                            className="px-2.5 py-1 text-xs font-medium rounded-full border hover:opacity-80 transition-all truncate max-w-[150px] select-none"
-                                            title=${f.title}
-                                        >
-                                            ${f.title}
-                                        </button>
-                                    `) : html`<span className="text-xs text-gray-400 px-1 italic">No favorites</span>`}
-                                </div>
-                            </div>
+                            <${FavoritesPanel} favs=${favs} onNavigate=${(id) => nav(id)} />
                         `}
                     </div>
 
-                    <div
-                        style=${{ backgroundColor: 'color-mix(in srgb, var(--primary) 5%, transparent)' }}
-                        className="w-2 h-full cursor-col-resize hover:bg-primary/20 transition-colors flex-shrink-0 flex items-center justify-center z-50 select-none"
-                        onMouseDown=${handleMouseDown}
-                    >
-                        <div className="w-0.5 h-8 bg-primary rounded-full pointer-events-none"></div>
-                    </div>
+                    <${ResizeHandle} onMouseDown=${handleMouseDown} />
 
                     <div 
                         style=${{ borderColor: 'color-mix(in srgb, var(--primary) 20%, transparent)' }}
                         className="flex-1 h-full bg-background border-l min-w-0 relative"
                         onClick=${() => setFSec('content')}
                     >
-                            ${fSec === 'content' && isEditing && activeNote ? html`
-                                <textarea
-                                    ref=${textareaRef}
-                                style=${{ fontSize: `${fs * 0.95}px` }}
-                                className="w-full h-full bg-transparent resize-none outline-none font-mono custom-scrollbar p-6"
-                                    value=${editContent}
-                                    onChange=${handleContentChange}
-                                    onKeyDown=${(e) => {
-                                        if (showAutocomplete) {
-                                            if (['ArrowUp', 'ArrowDown', 'Enter', 'Tab', 'Escape'].includes(e.key)) {
-                                                e.stopPropagation();
-                                                handleAutocompleteKeyDown(e);
-                                            }
-                                        }
-                                    }}
-                                    placeholder="Start typing..."
-                                ></textarea>
-                                ${showAutocomplete && html`
-                                    <div ref=${(el) => { autocompleteDropdownRef.current = el; sugListRef.current = el; }} className="absolute z-50 w-64 bg-card border border-gray-200 dark:border-gray-700 shadow-xl rounded-md max-h-60 overflow-y-auto custom-scrollbar" style=${{top:caretPos.top+30,left:caretPos.left+24}}>
-                                        ${autocompleteResults.length===0?html`<div className="p-2 text-xs text-gray-500 italic">No matching notes</div>`
-                                        :autocompleteResults.map((s,i)=>html`
-                                            <div key=${s.id} onClick=${()=>handleSelectAutocomplete(i)} onMouseEnter=${() => setSelectedSuggestionIndex(i)} className=${`px-3 py-2 text-sm cursor-pointer ${i===selectedSuggestionIndex?'bg-primary text-primary-foreground':'hover:bg-black/5 dark:hover:bg-white/10'}`}>
-                                                ${s.title}
-                                            </div>
-                                        `)}
-                                        ${autocompleteQuery.trim() && html`
-                                            <div onClick=${() => handleSelectAutocomplete(autocompleteResults.length)} onMouseEnter=${() => setSelectedSuggestionIndex(autocompleteResults.length)} className=${`px-3 py-2 text-sm cursor-pointer border-t dark:border-gray-700 ${selectedSuggestionIndex === autocompleteResults.length ? 'bg-primary text-primary-foreground' : 'hover:bg-black/5 dark:hover:bg-white/10'}`}>
-                                                <span className="opacity-50 mr-2">+</span> Create "${autocompleteQuery}" as Child
-                                            </div>
-                                            <div onClick=${() => handleSelectAutocomplete(autocompleteResults.length + 1)} onMouseEnter=${() => setSelectedSuggestionIndex(autocompleteResults.length + 1)} className=${`px-3 py-2 text-sm cursor-pointer ${selectedSuggestionIndex === autocompleteResults.length + 1 ? 'bg-primary text-primary-foreground' : 'hover:bg-black/5 dark:hover:bg-white/10'}`}>
-                                                <span className="opacity-50 mr-2">+</span> Create "${autocompleteQuery}" as Parent
-                                            </div>
-                                        `}
-                                    </div>
-                                `}
-                            ` : activeNote ? html`
-                                <div 
-                                    ref=${previewRef}
-                                    tabIndex=${0}
-                                    style=${{ fontSize: `${fs}px` }}
-                                    className=${`w-full h-full overflow-y-auto custom-scrollbar p-8 prose dark:prose-invert max-w-none compact-markdown transition-all duration-200 outline-none ${fSec==='content' ? 'ring-2 ring-primary/10 rounded-lg' : ''}`} 
-                                    dangerouslySetInnerHTML=${{ __html: prevH || '<span class="text-gray-400 italic">No content</span>' }}
-                                    onClick=${async (e) => {
-                                        if (e.target.classList.contains('internal-link') && e.target.dataset.title) {
-                                            e.preventDefault();
-                                            const title = e.target.dataset.title;
-                                            const noteToNav = await findNoteByTitle(title);
-                                            if (noteToNav) {
-                                                nav(noteToNav.id);
-                                                // Ensure we are not in edit mode when navigating
-                                                if (isEditing) {
-                                                    setIsEditing(false);
-                                                }
-                                            } else {
-                                                const rect = e.target.getBoundingClientRect();
-                                                setCreateLinkState({ isOpen: true, title, position: { top: rect.bottom + 5, left: rect.left } });
-                                            }
-                                        }
-                                    }}
-                                ></div>
-                            ` : html`
-                                <div className="flex items-center justify-center h-full text-gray-400 italic select-none">
-                                    No content
-                                </div>
-                            `}
+                            <${EditorPane} 
+                                showEditor=${fSec === 'content' && isEditing && activeNote}
+                                activeNote=${activeNote}
+                                editContent=${editContent}
+                                onTextChange=${handleContentChange}
+                                textareaRef=${textareaRef}
+                                previewRef=${previewRef}
+                                prevH=${prevH}
+                                fontPx=${fs}
+                                focusedClass=${fSec === 'content'}
+                                onPreviewClick=${onPreviewClick}
+                                showAutocomplete=${showAutocomplete}
+                                autocompleteQuery=${autocompleteQuery}
+                                autocompleteResults=${autocompleteResults}
+                                selectedIndex=${selectedSuggestionIndex}
+                                caretPos=${caretPos}
+                                onAutocompleteSelect=${handleSelectAutocomplete}
+                                onAutocompleteHover=${setSelectedSuggestionIndex}
+                                onAutocompleteKeyDown=${handleAutocompleteKeyDown}
+                                autocompleteDropdownRef=${autocompleteDropdownRef}
+                                sugListRef=${sugListRef}
+                            />
                         </div>
                     </div>
 
