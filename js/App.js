@@ -2,7 +2,7 @@
 (function(J) {
     const { useState, useEffect, useRef, useCallback, useMemo } = React;
     const { db, getTopology, createNote, updateNote, deleteNote, getFavorites, toggleFavorite, seedDatabase, getNote, getAllNotes, importNotes, getHomeNoteId, searchNotes, searchContent, getFontSize, getNoteCount, getVaultList, getCurrentVaultName, switchVault, getSectionVisibility, findNoteByTitle, getNoteTitlesByPrefix, getActiveThemeId, getTheme, setActiveThemeId, getThemes, getAttachmentAliases, getSplitRatio, setSplitRatio: dbSetSplitRatio } = J.Services.DB;
-    const { goToDate, goToToday, getDateSubtitle } = J.Services.Journal; 
+    const { goToDate, goToToday, getDateSubtitle, formatDateForJournal } = J.Services.Journal; 
     const { createRenderer, wikiLinkExtension, setAttachmentAliases } = J.Services.Markdown;
     const { NoteCard, LinkerModal, SettingsModal, ImportModal, RenameModal, NoteSection, TopBar, StatusBar, Icons, AllNotesModal, ContentSearchModal, VaultChooser, MentionsModal, CreateNoteFromLinkModal, APP_VERSION } = J;
     const { useHistory, useListNavigation, useClickOutside } = J.Hooks;
@@ -633,6 +633,35 @@
         const handleKeyDownRef = useRef(handleGlobalKeyDown);
         useEffect(() => { handleKeyDownRef.current = handleGlobalKeyDown; }, [handleGlobalKeyDown]);
         useEffect(() => { const h=(e)=>handleKeyDownRef.current(e); window.addEventListener('keydown',h); return ()=>window.removeEventListener('keydown',h); }, []);
+        
+        // Insert today's date (yyyy-mm-dd) at the caret with Ctrl/Cmd+Shift+D,
+        // works in any focused input/textarea (editor, linker, search, [[ autocomplete).
+        useEffect(() => {
+            const insertDate = (e) => {
+                if (!(e.ctrlKey || e.metaKey) || !e.shiftKey || e.code !== 'KeyD') return;
+                const el = document.activeElement;
+                if (!el || (el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA')) return;
+                e.preventDefault();
+                const dateStr = formatDateForJournal(new Date()).full;
+                const start = el.selectionStart ?? el.value.length;
+                const end = el.selectionEnd ?? start;
+                // Use React's instance setter when present so its value tracker stays in
+                // sync and it won't re-apply the value (and move the caret) on re-render.
+                const own = Object.getOwnPropertyDescriptor(el, 'value');
+                const proto = el.tagName === 'TEXTAREA' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
+                const setter = (own && own.set) ? own.set : Object.getOwnPropertyDescriptor(proto, 'value').set;
+                setter.call(el, el.value.slice(0, start) + dateStr + el.value.slice(end));
+                const caret = start + dateStr.length;
+                el.setSelectionRange(caret, caret);
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                // Re-apply the selection after React commits the re-render.
+                setTimeout(() => {
+                    if (document.activeElement === el && el.selectionStart !== caret) el.setSelectionRange(caret, caret);
+                }, 0);
+            };
+            window.addEventListener('keydown', insertDate);
+            return () => window.removeEventListener('keydown', insertDate);
+        }, []);
         
         return html`
             <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground font-sans flex-col">
