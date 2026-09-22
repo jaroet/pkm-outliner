@@ -241,11 +241,12 @@
         useEffect(()=>{
             if(showAutocomplete){
                 const t=setTimeout(async()=>{
-                    setAutocompleteResults(await searchNotes(autocompleteQuery)); 
+                    const res=await searchNotes(autocompleteQuery);
+                    setAutocompleteResults(activeNote ? res.filter(r=>r.id!==activeNote.id) : res);
                 },150);
                 return ()=>clearTimeout(t);
             }
-        },[autocompleteQuery, showAutocomplete]);
+        },[autocompleteQuery, showAutocomplete, activeNote]);
 
         const handleContentChange = (e) => {
             const v = e.target.value;
@@ -385,6 +386,7 @@
             if (!aid) return;
 
             const doL = async (id) => {
+                if (id === aid) return;
                 const center = await getNote(aid);
                 const target = await getNote(id);
                 if (!center || !target) return;
@@ -436,7 +438,7 @@
         const changeRelationship = async (type) => {
             const targets = sel.size > 0 ? Array.from(sel) : (getFocusedNote() ? [getFocusedNote().id] : []);
             if(!targets.length || !currentId) return;
-            const valid = targets.filter(id=>id!==currentId);
+            const valid = targets.filter(id => type === 'unlink' || id !== currentId);
             for(const id of valid) {
                 const c = await getNote(currentId); const t = await getNote(id);
                 if(c.linksTo.includes(id)) await updateNote(currentId,{linksTo:c.linksTo.filter(x=>x!==id)});
@@ -468,7 +470,7 @@
         const activeHasContent = activeNote && activeNote.content && activeNote.content.trim().length > 0;
         const subT=topo.center?getDateSubtitle(topo.center.title):null;
         const sp={fontSize:fs,focusedSection:fSec,focusedIndex:fIdx,selectedNoteIds:sel,centralNoteId:currentId,onNoteClick:(id,c)=>c?togSel(id):id!==currentId&&nav(id),scrollPositionsRef:scrollRef};
-        const canUnlink = sel.size > 0 || ['up', 'down'].includes(fSec);
+        const canUnlink = sel.size > 0 || ['up', 'down'].includes(fSec) || (topo.center && topo.center.id === currentId && (topo.center.linksTo || []).includes(currentId)) || (activeNote && (activeNote.linksTo || []).includes(activeNote.id));
 
         // --- KEYBOARD HANDLER ---
         const handleGlobalKeyDown = useCallback(async (e) => { // This is still re-created on each render due to dependencies

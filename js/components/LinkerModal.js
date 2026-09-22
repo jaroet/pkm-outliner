@@ -11,7 +11,7 @@
         const [sourceTitle, setSourceTitle] = useState('');
 
         useEffect(()=>{if(isOpen){setQuery('');setResults([]);setSelectedIndex(0);setTimeout(()=>inputRef.current?.focus(),50);}},[isOpen, sourceNoteId]);
-        useEffect(()=>{const t=setTimeout(async()=>{if(query.trim()&&!query.includes(';'))setResults(await searchNotes(query));else setResults([]);},200);return()=>clearTimeout(t);},[query]);
+        useEffect(()=>{const t=setTimeout(async()=>{if(query.trim()&&!query.includes(';')){const res=await searchNotes(query);setResults(res.filter(r=>r.id!==sourceNoteId));}else setResults([]);},200);return()=>clearTimeout(t);},[query, sourceNoteId]);
         
         useEffect(() => {
             if (isOpen && sourceNoteId) {
