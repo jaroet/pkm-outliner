@@ -8,7 +8,11 @@ permalink: /changelog/
 
 <!-- LATEST_RELEASE_MARKER -->
 
-## [0.9.2] - Current Release
+## [0.9.3] - Current Release
+- Fixed the workflow to show nicely formatted changelog and release information on release pages. Also moved context.md to AGENTS.md to make sure the instruction are read automatically for different AI frameworks.
+- Merge pull request #9 from jaroet:jr/fix_workflow
+
+## [0.9.2] - Previous Release
 - Added a hotkey to insert today's date (CTRL-SHFT-D / CMD-SHFT-D)
 - Corrected the behaviour so a child or parent link to itself is not possbile anymore.
 - Merge pull request #8 from jaroet:jr/small_fixes

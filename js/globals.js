@@ -8,7 +8,7 @@ window.Jaroet = {
     Services: {},
     Components: {},
     Hooks: { },
-    APP_VERSION: '0.9.2',
+    APP_VERSION: '0.9.3',
     Utils: {
         // Helper to get caret coordinates for autocomplete popup
         getCaretCoordinates: (element, position) => {
