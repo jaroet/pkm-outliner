@@ -12,6 +12,7 @@ jobs:
       contents: write
     outputs:
       new-sha: ${{ steps.commit.outputs.sha }}
+      release_notes: ${{ steps.changelog.outputs.release_notes }}
     steps:
       - name: Checkout main
         uses: actions/checkout@v4
@@ -20,17 +21,46 @@ jobs:
           fetch-depth: 0
 
       - name: Update Changelog
+        id: changelog
         run: |
           NEW_TAG=${{ github.ref_name }}
           NEW_VERSION=${NEW_TAG#v}
-          PREVIOUS_TAG=$(git describe --tags --abbrev=0 $(git rev-list --tags --skip=1 --max-count=1) 2>/dev/null || git rev-list --max-parents=0 HEAD)
-          COMMIT_LOG=$(git log ${PREVIOUS_TAG}..${NEW_TAG} --pretty=format:"- %s" | sort)
-          CHANGELOG_ENTRY="## [${NEW_VERSION}] - Current Release\n${COMMIT_LOG}\n\n<!-- LATEST_RELEASE_MARKER -->"
-          awk -v new_entry="$CHANGELOG_ENTRY" '
-          /<!-- LATEST_RELEASE_MARKER -->/ { print new_entry; after_marker=1; next }
-          after_marker && /^## .* - Current Release$/ { sub(/ - Current Release$/, " - Previous Release"); print; after_marker=0; next }
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 ${NEW_TAG}^ 2>/dev/null || git rev-list --max-parents=0 HEAD)
+          COMMIT_LOG=$(git log ${PREVIOUS_TAG}..${NEW_TAG} --pretty=format:"- %s" | grep -v -E "^- docs: update changelog" | sort || true)
+          if [ -z "$COMMIT_LOG" ]; then
+            COMMIT_LOG=$(git log ${PREVIOUS_TAG}..${NEW_TAG} --pretty=format:"- %s" | sort)
+          fi
+
+          export CHANGELOG_ENTRY=$(printf "## [%s] - Current Release\n%s" "${NEW_VERSION}" "${COMMIT_LOG}")
+
+          awk '
+          /<!-- LATEST_RELEASE_MARKER -->/ {
+              print $0;
+              print "";
+              print ENVIRON["CHANGELOG_ENTRY"];
+              next;
+          }
+          /^## .* - Current Release$/ {
+              sub(/ - Current Release$/, " - Previous Release");
+              print;
+              next;
+          }
           { print }
           ' docs/changelog.md > temp_changelog.md && mv temp_changelog.md docs/changelog.md
+
+          if [[ "$PREVIOUS_TAG" == v* ]]; then
+            COMPARE_LINK="**Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREVIOUS_TAG}...${NEW_TAG}"
+          else
+            COMPARE_LINK="**Full Changelog**: https://github.com/${{ github.repository }}/commits/${NEW_TAG}"
+          fi
+
+          DELIMITER="RELEASE_NOTES_$(date +%s)"
+          echo "release_notes<<${DELIMITER}" >> $GITHUB_OUTPUT
+          echo "## What's Changed" >> $GITHUB_OUTPUT
+          echo "$COMMIT_LOG" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "$COMPARE_LINK" >> $GITHUB_OUTPUT
+          echo "${DELIMITER}" >> $GITHUB_OUTPUT
 
       - name: Update version numbers
         run: |
@@ -46,8 +76,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/changelog.md js/globals.js index.html
-          git commit -m "docs: update changelog and bump version to ${{ github.ref_name }}"
-          git push
+          if ! git diff --staged --quiet; then
+            git commit -m "docs: update changelog and bump version to ${{ github.ref_name }}"
+            git push
+          fi
           echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
   build-release:
@@ -63,13 +95,14 @@ jobs:
 
       - name: Create Zip Archive
         run: |
-          zip -r pkm-outliner-${{ github.ref_name }}.zip . -x "*.git*" ".github*" "generate-vault.py" "context.md"
+          zip -r pkm-outliner-${{ github.ref_name }}.zip . -x "*.git*" ".github*" "generate-vault.py" "AGENTS.md"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           files: pkm-outliner-${{ github.ref_name }}.zip
-          generate_release_notes: true
+          body: ${{ needs.update-changelog.outputs.release_notes }}
+          generate_release_notes: false
           draft: false
           prerelease: false
