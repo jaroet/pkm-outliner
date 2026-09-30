@@ -6,7 +6,20 @@ permalink: /changelog/
 
 # Release History
 
-## [0.9.0] - Current Release
+<!-- LATEST_RELEASE_MARKER -->
+
+## [0.9.2] - Current Release
+- Added a hotkey to insert today's date (CTRL-SHFT-D / CMD-SHFT-D)
+- Corrected the behaviour so a child or parent link to itself is not possbile anymore.
+- Merge pull request #8 from jaroet:jr/small_fixes
+- No functional changes just split the bigger files so the AI has a better understanding of the code as everything is split in very specific files per each function.
+
+## [0.9.1] - Previous Release
+- Added: the versionnumber is now upgraded during the build release step. So the release and versionnumber are always in sync.
+- Merge pull request #7 from jaroet:jr/20260924
+- updated context
+
+## [0.9.0] - Previous Release
 - Fixed: changed the workflow to first write the changelog and then create the release zip. Upgraded to version 0.8.5.
 - Fixed: the changelog will now first show added features and then the fixed issues.
 - Merge pull request #6 from jaroet/jr/zondag120926
@@ -14,21 +27,6 @@ permalink: /changelog/
 - removed the encryption feature as it is not implemented currently.
 - removed unused and leftover files and references.
 - updated versions to 0.8.2 in general and removed frontmatter js file that was not really implemented.
-
-## [0.9.1] - Current Release
-- Added: the versionnumber is now upgraded during the build release step. So the release and versionnumber are always in sync.
-- Merge pull request #7 from jaroet:jr/20260924
-- docs: update changelog for v0.9.0
-- updated context
-
-## [0.9.2] - Current Release
-- Added a hotkey to insert today's date (CTRL-SHFT-D / CMD-SHFT-D)
-- Corrected the behaviour so a child or parent link to itself is not possbile anymore.
-- Merge pull request #8 from jaroet:jr/small_fixes
-- No functional changes just split the bigger files so the AI has a better understanding of the code as everything is split in very specific files per each function.
-- docs: update changelog and bump version to v0.9.1
-
-<!-- LATEST_RELEASE_MARKER -->
 
 ## [0.8.2] - Previous Release
 ### Maintenance
