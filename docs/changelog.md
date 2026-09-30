@@ -21,6 +21,13 @@ permalink: /changelog/
 - docs: update changelog for v0.9.0
 - updated context
 
+## [0.9.2] - Current Release
+- Added a hotkey to insert today's date (CTRL-SHFT-D / CMD-SHFT-D)
+- Corrected the behaviour so a child or parent link to itself is not possbile anymore.
+- Merge pull request #8 from jaroet:jr/small_fixes
+- No functional changes just split the bigger files so the AI has a better understanding of the code as everything is split in very specific files per each function.
+- docs: update changelog and bump version to v0.9.1
+
 <!-- LATEST_RELEASE_MARKER -->
 
 ## [0.8.2] - Previous Release
