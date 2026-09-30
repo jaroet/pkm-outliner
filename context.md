@@ -9,7 +9,7 @@ The project is a **client-side Personal Knowledge Management (PKM) outliner**. I
 ## 2. Core Technologies
 
 *   **Frontend:** Vanilla JavaScript (ES6+), using the `htm` library for a React-like component structure.
-*   **Database:** **IndexedDB** is the sole storage mechanism, managed via the `Dexie.js` library. All user data is stored locally in the browser. The application logic for this is primarily in `js/services/db.js`.
+*   **Database:** **IndexedDB** is the sole storage mechanism, managed via the `Dexie.js` library. All user data is stored locally in the browser. The application logic for this is split across the modules in `js/services/db/` (`core.js` creates the database, the other files add functions to `J.Services.DB`; they must be loaded in the order listed in `index.html`).
 *   **Dependencies:** Key libraries are pre-included in `js/libs/`, such as `react`, `react-dom`, `marked.js`, and `dexie.min.js`.
 *   **Structure:** This is a single-page application (SPA) with `index.html` as the entry point. The main application logic resides in `js/App.js`. Make sure that every .js file is placed inside the js directory and nowhere else. 
 
